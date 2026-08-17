@@ -4,9 +4,10 @@ Operating rules for all agents on the PowerScanner project.
 
 ## Workflow
 
-`PLAN → DELEGATE → EXECUTE → REVIEW → FIX → VERIFY → DOCUMENT → CONTINUE`
+`HUMAN REQUEST → CLAUDE PLAN → TASK → CODEX ROUTE → AGENT EXECUTE → CODEX VERIFY → CLAUDE REVIEW → HUMAN APPROVE`
 
-Never skip REVIEW or VERIFY. A task is never marked DONE without passing review.
+Never skip Codex verification, Claude review, or Human approval. A task is never
+marked DONE without all three.
 
 ## Source of truth (priority order)
 
@@ -18,8 +19,8 @@ docs/PRD.md → docs/ARCHITECTURE.md → docs/SECURITY.md → docs/PLAN.md
 The canonical implementation plan is
 `docs/superpowers/plans/2026-08-17-powerscanner-phase1.md` (18 tasks, TDD, full
 code). The task board (`tasks/`) mirrors it; `docs/PLAN.md` links to it. On
-conflict: stop, analyze, do not guess, escalate to CEO if the decision is
-significant.
+conflict: stop, analyze, do not guess, escalate to the Human Owner if the
+decision is significant.
 
 ## Must
 
@@ -35,13 +36,13 @@ significant.
 
 - Guess requirements.
 - Skip Acceptance Criteria or Security Review.
-- Change architecture unilaterally (escalate to CEO).
+- Change architecture unilaterally (escalate to the Human Owner).
 - Commit secrets or generated build artifacts (except the shipped rule bundle).
 - Mark a task DONE without verification.
 - Work directly on `main`/`master`/`develop` — use `feature/*`, `bugfix/*`,
   `refactor/*`, `chore/*`, `docs/*`.
 
-## Escalate to CEO before
+## Escalate to Human Owner before
 
 Major architecture change · production release · destructive data operation ·
 major scope change · security exception · anything hard to reverse.

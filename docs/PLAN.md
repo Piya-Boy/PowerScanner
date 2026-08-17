@@ -44,5 +44,7 @@ after 001. Crypto tasks (002-004) block 011/015/016. Core types (005) block
 011/013/014.
 
 ## Execution model
-PM dispatches each task to an engineering subagent on a `feature/*` branch,
-reviews against Acceptance Criteria (PASS / NEEDS_FIX), then advances the board.
+Human Owner gives direction → Claude plans → task is written to `tasks/` → Codex
+chooses the specialist agent + model → agent implements on a `feature/*` branch
+→ Codex verifies → Claude reviews against Acceptance Criteria → Human Owner
+approves or requests fixes.
