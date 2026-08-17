@@ -1,0 +1,2 @@
+# PowerScanner SHA-256 blacklist
+# one lowercase sha256 per line, # = comment
