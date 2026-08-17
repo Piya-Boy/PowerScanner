@@ -1,0 +1,42 @@
+tasks/handoff/TASK-001.codex.md
+  s_1aa0d5b19cbb70::t_c434302135f5c1 43
+  s_148c8801b0dff6::t_b99e9fef9d64bf 1-42,44-57
+.ai/MODEL_ROUTER.md
+  s_1aa0d5b19cbb70::t_8bbaafca8c0d82 7,9-13,19-28,33-34,36-37,39-40,48-65
+  s_1aa0d5b19cbb70::t_ca15ee9b28a22e 38
+  s_148c8801b0dff6::t_e8d164b6f8d2aa 1-6,8,14-18,29-30,32,35,41-47
+  s_1aa0d5b19cbb70::t_68ff8854e4b17c 31
+docs/PLAN.md
+  s_1aa0d5b19cbb70::t_ca15ee9b28a22e 47-50
+.ai/RULES.md
+  s_1aa0d5b19cbb70::t_ca15ee9b28a22e 7,9-10,22-23,39,45
+.ai/TEAM.md
+  s_1aa0d5b19cbb70::t_ca15ee9b28a22e 6,9-27,46,67-69
+  s_148c8801b0dff6::t_307493aa8f9c0d 28,30-37,40,49-51,56-58,60
+  s_1aa0d5b19cbb70::t_cff908d648f3ed 38-39,41-43,54-55,59
+  s_148c8801b0dff6::t_d9908550db3517 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6c96d46f200e06046e5659a3711eb7375ef432f2",
+  "prompts": {},
+  "sessions": {
+    "s_148c8801b0dff6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d27862d-c562-4e78-9304-7ac2b7f84592",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Piya Miang-lae <piyamianglae.dev@gmail.com>"
+    },
+    "s_1aa0d5b19cbb70": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a00fda-ebcb-73c2-9aff-dbf7cd5bf34d",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Piya Miang-lae <piyamianglae.dev@gmail.com>"
+    }
+  }
+}
