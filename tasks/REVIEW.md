@@ -20,6 +20,7 @@
 | TASK-017 | README + signature format docs | PASS | `README.md`, `docs/SIGNATURES.md`, `docs/SECURITY.md`, `docs/ARCHITECTURE.md` | API/path/security consistency reviewed; build/staging, presets, import/re-import, portable bundle, signed results and Phase 1 limitations documented; two independent re-reviews clean |
 | TASK-018 | Reproducible YARA rule bundle pipeline | PASS | `tools/build-rules.sh`, `tools/rule-sources.txt`, `.gitattributes`, `signatures/.bundle-date` | Git-pinned multi-source fetch, compile/dedupe/FP filtering, collision guard, manifest hashes, LF-stable artifacts, atomic publish rollback, self-test and bash syntax checks; two independent re-reviews clean |
 | TASK-019 | Build-time bundle sealing (Defender-safe ship) | PASS | `tools/seal-bundle/`, `tools/package-release.ps1`, `signatures/bundle.psenc` | Sealer validates hashes/rules, portable AES-GCM, SHA-bound manifest, Windows atomic replace, clean-checkout verify mode, safe release-root confinement, mandatory attribution/licenses, plaintext leak guard; workspace 49 core + 8 GUI + 2 tool tests, Clippy/fmt clean; two independent re-reviews clean |
+| FIX-001 | Scan error must not read as Clean | PASS | `core/src/scan/result.rs`, `core/src/scan/engine.rs`, `gui/src/app.rs`, `gui/src/main.rs` | Per-file failures preserve error text as `Verdict::Error`; GUI counts/displays/filters errors separately; workspace 50 core + 9 GUI + 2 tool tests, Clippy/fmt clean; two independent re-reviews clean |
 
 ## TASK-002 Review Findings (Resolved)
 
@@ -40,13 +41,13 @@ binding, cross-process file locks, atomic seal). Three findings:
 
 | # | Sev | Location | Finding | Disposition |
 |---|-----|----------|---------|-------------|
-| F1 | HIGH | `core/src/scan/engine.rs:105` | A per-file scan error (unreadable/locked file) is swallowed by `unwrap_or_else` into `Verdict::Clean`. Contradicts ARCHITECTURE ("absence of detection is never reported as clean") and is a real evasion gap: malware that locks its own file reads as clean. | **FIX-001** → Engineering |
+| F1 | HIGH | `core/src/scan/engine.rs:105` | A per-file scan error (unreadable/locked file) was swallowed by `unwrap_or_else` into `Verdict::Clean`. Contradicted ARCHITECTURE ("absence of detection is never reported as clean") and created an evasion gap. | **Resolved by FIX-001**; independent re-review clean |
 | F2 | LOW | `core/src/signatures/store.rs:17` | `embedded_secret()` XOR-split is obfuscation, not security. Consistent with ADR-004 (cost-raising, not absolute) but should be commented as such so no one mistakes it for protection. | comment-only, optional |
 | F3 | LOW | `core/src/crypto/signer.rs:37` | `unreachable!()` sits in a library path (technically the "no panic in lib" rule). The HMAC "any key length" invariant is genuinely total, so it cannot fire; acceptable with its comment. | accepted |
 
 Note: the per-task PASS rows below were authored by the engineering loop (Codex
-self-review). F1 is a case the self-review missed; the loop's `cargo test`
-verified only that declared tests pass, not that the clean-path is correct.
+self-review). F1 was missed by the original test set and is now covered by
+explicit unreadable-file and GUI error-visibility regressions.
 
 ---
 

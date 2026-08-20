@@ -4,7 +4,7 @@
 Phase 1 — MVP implementation in progress.
 
 ## Current Task
-Human approval gate — TASK-001 through TASK-019 passed
+Human approval gate — TASK-001 through TASK-019 and FIX-001 passed
 independent re-review and remain awaiting Human Owner approval.
 
 ## Current Agent
@@ -13,13 +13,14 @@ separate window, same working dir `E:\Develop\CODING\PowerScanner`). Claude =
 PM/reviewer.
 
 ## Status
-TASK-001 through TASK-019 have verified implementations. TASK-002's security
+TASK-001 through TASK-019 and FIX-001 have verified implementations. TASK-002's security
 guarantee is explicitly limited to offline/manual tamper evidence. The vault
 uses aes-gcm 0.10.3; the verified workspace MSRV is 1.88 because of the
 YARA/wasmtime transitive graph.
 
 ## Last Action
-Security Agents independently re-reviewed TASK-019's sealer, manifest binding, release confinement, and plaintext leak boundary and returned clean.
+Security Agents independently re-reviewed FIX-001's per-file error verdict,
+message preservation, and GUI visibility/counting behavior and returned clean.
 
 ## Next Action
 Human Owner reviews the complete Phase 1 diff and decides whether to approve
