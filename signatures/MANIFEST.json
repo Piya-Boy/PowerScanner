@@ -1,17 +1,18 @@
 {
   "bundle_version": "2026.08.17",
   "generated_from": [
-    { "repo": "reversinglabs/reversinglabs-yara-rules", "ref": "develop", "license": "MIT", "files_kept": 310 },
-    { "repo": "Yara-Rules/rules", "ref": "master", "license": "GPL-2.0", "files_kept": 455 },
-    { "repo": "bartblaze/Yara-rules", "ref": "master", "license": "MIT", "files_kept": 110 }
+    { "repo": "reversinglabs/reversinglabs-yara-rules", "ref": "e0a0be54aa1e11ccfd6854e4f19e9476f328fd84", "license": "MIT", "files_kept": 310 },
+    { "repo": "Yara-Rules/rules", "ref": "0f93570194a80d2f2032869055808b0ddcdfb360", "license": "GPL-2.0", "files_kept": 455 },
+    { "repo": "bartblaze/Yara-rules", "ref": "5cc871d82361de8a80d387ec8bbd01fe4258b4a9", "license": "MIT", "files_kept": 110 }
   ],
   "excluded_anyrun": "anyrun/YARA — no LICENSE file, excluded",
   "total_files": 875,
-  "total_rules": 13134,
+  "total_rules": 13101,
   "yara_x_version": "1.19.0",
   "pipeline": "compile-test per file, dedupe rule names, drop FP-prone (utils/deprecated/email/capabilities), drop androguard-module rules",
   "artifacts": {
-    "bundled.yar":  { "sha256": "f8942a48a2df7c4c02c3b0fbdf6eb0076a2dfa391ad1a7f78c4683b819a49ab8" },
+    "hashes.txt":    { "sha256": "028cc5a5667cbc0a0e88435bb4cc68be87e30f4a59c8678ec41ddd92638d9d39" },
+    "bundled.yar":  { "sha256": "9d8a6b16a93756c86c756dabedd1fe5f2d3bdea494ab51c655e6127409de77c7" },
     "bundled.yarc": { "sha256": "720b31b055e9d1aee6af50c5d2a95552ec6400a267dd3c6133a07b4bbf856888", "note": "precompiled YARA-X rules, 15MB" }
   }
 }
