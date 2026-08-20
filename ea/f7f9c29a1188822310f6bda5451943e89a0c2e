@@ -1,0 +1,21 @@
+tasks/REVIEW.md
+  s_34b552c041ff4a::t_bdc51aa4055c98 23,44,49-50
+.ai/STATE.md
+  s_34b552c041ff4a::t_bdc51aa4055c98 7,16,22-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "eaf7f9c29a1188822310f6bda5451943e89a0c2e",
+  "prompts": {},
+  "sessions": {
+    "s_34b552c041ff4a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f84-7fe0-7ba1-aee5-91d8c84eb2bc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Piya Miang-lae <piyamianglae.dev@gmail.com>"
+    }
+  }
+}
