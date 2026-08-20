@@ -1,0 +1,184 @@
+tasks/loop_tasks.json
+  s_34b552c041ff4a::t_943012a52a2457 24
+  s_2c340838b9f869::t_5143371f888ef6 411-436
+tasks/handoff/TASK-001.codex.md
+  s_34b552c041ff4a::t_943012a52a2457 28
+docs/ARCHITECTURE.md
+  s_34b552c041ff4a::t_26fc9f49ce76af 94-97,196,201-205
+  s_34b552c041ff4a::t_1c5127b458a33b 219
+  s_34b552c041ff4a::t_87ccc32384adc6 54-57
+  s_34b552c041ff4a::t_e4f292d886ac8a 277-279
+docs/SECURITY.md
+  s_34b552c041ff4a::t_b7d13d282962a1 7-11,36-40
+  s_34b552c041ff4a::t_b9f182798f00ff 13-17,20-29,33-35
+  s_34b552c041ff4a::t_fc12ee7c9fe5d2 4,6
+docs/ROADMAP.md
+  s_148c8801b0dff6::t_74904a1c8929aa 16-19
+docs/superpowers/plans/2026-08-17-powerscanner-phase1.md
+  s_34b552c041ff4a::t_7e9b0c8333ffd4 13-15,25,94,2886
+  s_148c8801b0dff6::t_ea03e5d91821e8 2266,2268,2272-2308,2326,2331
+  s_148c8801b0dff6::t_9094470413c9ee 2858-2885,2887-3051
+  s_148c8801b0dff6::t_9af748ac5674b7 3066-3069
+  s_34b552c041ff4a::t_a3938099f853f7 22-24,26
+  s_148c8801b0dff6::t_cec76bf47ab7ff 2230-2244,2250,2254,2256-2258,2260
+  s_148c8801b0dff6::t_fd85e9a3632cfa 2368-2374
+  s_148c8801b0dff6::t_2f85b859a55550 2453-2482,2485-2486
+  s_148c8801b0dff6::t_b3308f194b7985 2446
+  s_148c8801b0dff6::t_9e1e582b34178a 2830-2834
+  s_148c8801b0dff6::t_82658fac9e87eb 2367
+  s_148c8801b0dff6::t_83465d08c73847 2375
+  s_148c8801b0dff6::t_450d32cd66a3da 3052-3054
+README.md
+  s_34b552c041ff4a::t_d61e53b9869c1d 3
+  s_34b552c041ff4a::t_b7d13d282962a1 131-136
+  s_34b552c041ff4a::t_fc12ee7c9fe5d2 157-159
+  s_34b552c041ff4a::t_4d99371b9da2f8 39,84,164,166
+  s_34b552c041ff4a::t_7a753d2d7dec3e 68-69,72-73,76-77
+  s_34b552c041ff4a::t_28dd1eb3a3168a 97,100,103,106-109
+  s_34b552c041ff4a::t_c4eecbd8dc96ac 19-20,71,146
+  s_34b552c041ff4a::t_1c5127b458a33b 7-9,144-145
+  s_34b552c041ff4a::t_240e7145ce51ff 118-121,143,149-150
+.gitignore
+  s_34b552c041ff4a::t_a59936828003b8 16-18
+  s_34b552c041ff4a::t_0bff3f5dee57a1 3
+  s_2c340838b9f869::t_eda5ccc0bc0c04 23-25
+docs/SIGNATURES.md
+  s_34b552c041ff4a::t_f941aaa6ec1fa9 21-23
+  s_34b552c041ff4a::t_c4eecbd8dc96ac 40-43
+  s_34b552c041ff4a::t_28dd1eb3a3168a 3-8
+  s_34b552c041ff4a::t_d61e53b9869c1d 1-2,9-20,24-39,44-56
+.ai/STATE.md
+  s_34b552c041ff4a::t_bae664ad8fafee 7,16,22,25-26
+  s_ceca5d62331e72::t_d1d36bf2ff2767 38-39,45-46,53,67,74,94-95,101-102,108-109,115-116,122-123,129-130,136-137,143-144,150-151,157-158,164-165,171-172,185-186,192-193,199-200,205-214,234-235
+  s_34b552c041ff4a::t_8b3913538a07ef 246
+  s_34b552c041ff4a::t_e703a4bf0bba3a 32
+  s_34b552c041ff4a::t_ac77c547bd1470 250-258
+  s_34b552c041ff4a::t_7556f8d2a7a0f6 275-282
+  s_34b552c041ff4a::t_ee1d3ab9e75e9b 29,51,259-266
+  s_34b552c041ff4a::t_7dfeeb10d350e2 52,66,73,220,227,239-245,247-249
+  s_34b552c041ff4a::t_943012a52a2457 19
+  s_34b552c041ff4a::t_f118786ff0bb88 107,114,291-298
+  s_34b552c041ff4a::t_b71a3d31672963 4
+  s_f6ba8d8474024e::t_5ef272b9040c68 54-60
+  s_34b552c041ff4a::t_7e6c277364816d 8,17,65,72,267-274
+  s_65ceea5e466540::t_83b4d574493e82 82-88
+  s_34b552c041ff4a::t_fe4ec4aa460b40 35,42,49,63,70,91,98,105,112,119,121,126,128,133,140,147,154,161,168,182,189,196,203,217,224,231,238,299-306
+  s_f165a344ea9e2e::t_a8f8521b1c565f 173-179,184
+  s_34b552c041ff4a::t_1ce2b4b53bf188 18,93,100,283-290
+  s_9132ef14d3c629::t_63686c19962895 75-81
+  s_34b552c041ff4a::t_c65542e73c1f96 33-34
+  s_34b552c041ff4a::t_bd17811bee7a2b 50
+  s_34b552c041ff4a::t_d480aeaba7ae5b 64
+  s_34b552c041ff4a::t_71c84e40c8c43d 71
+  s_34b552c041ff4a::t_f93099429dc803 92
+  s_34b552c041ff4a::t_91a2b969e598e6 99
+  s_34b552c041ff4a::t_2994ec37d0eec8 106
+  s_34b552c041ff4a::t_764ae590cb29d6 113
+  s_34b552c041ff4a::t_63de25a23a7eb2 120
+  s_34b552c041ff4a::t_0f720a80dafba3 127
+  s_34b552c041ff4a::t_4423c21ee4ec03 218-219
+  s_34b552c041ff4a::t_66e8206fa9e05c 221-223
+  s_34b552c041ff4a::t_c67a506a3921d6 225-226
+  s_34b552c041ff4a::t_70c55788fac964 228-230
+  s_34b552c041ff4a::t_7c80d508eb9eee 36-37,40-41,43-44,47-48,61-62,68-69,89-90,96-97,103-104,110-111,117-118,124-125,131-132,134-135,138-139,141-142,145-146,148-149,152-153,155-156,159-160,162-163,166-167,169-170,180-181,183,187-188,190-191,194-195,197-198,201-202,204,215-216,232-233,236-237
+tasks/REVIEW.md
+  s_34b552c041ff4a::t_7e6c277364816d 6
+  s_2c340838b9f869::t_33a36a5cc18a6e 32-51
+  s_34b552c041ff4a::t_f118786ff0bb88 9
+  s_34b552c041ff4a::t_fe4ec4aa460b40 10
+  s_34b552c041ff4a::t_cecb5d89fd1dbf 21
+  s_34b552c041ff4a::t_81e2beddedfadc 19
+  s_34b552c041ff4a::t_059c74ecd4a564 18
+  s_34b552c041ff4a::t_b5825fb2194112 16
+  s_34b552c041ff4a::t_e703a4bf0bba3a 17
+  s_34b552c041ff4a::t_bae664ad8fafee 22
+  s_34b552c041ff4a::t_7556f8d2a7a0f6 7
+  s_34b552c041ff4a::t_1ce2b4b53bf188 8
+  s_34b552c041ff4a::t_f6fc06da820ba1 13
+  s_34b552c041ff4a::t_ee1d3ab9e75e9b 5,24,26-30
+  s_34b552c041ff4a::t_845e84c868ab33 20
+  s_34b552c041ff4a::t_41f3970d6ff25e 15
+  s_34b552c041ff4a::t_cb66e3cf635fc4 12
+  s_34b552c041ff4a::t_8fedbb361d412c 14
+  s_34b552c041ff4a::t_863e6b391b67e6 11
+  s_34b552c041ff4a::t_ac77c547bd1470 3-4,23,25
+  s_2c340838b9f869::t_32b5f55f3124cb 31
+.ai/RULES.md
+  s_34b552c041ff4a::t_7e9b0c8333ffd4 52
+tasks/TASK-001.md
+  s_34b552c041ff4a::t_943012a52a2457 33
+tasks/TODO.md
+  s_34b552c041ff4a::t_bae664ad8fafee 3,13-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4f27ae3bacf3897be009a2a751a07b410debb076",
+  "prompts": {},
+  "sessions": {
+    "s_148c8801b0dff6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d27862d-c562-4e78-9304-7ac2b7f84592",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Piya Miang-lae <piyamianglae.dev@gmail.com>"
+    },
+    "s_2c340838b9f869": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d32d4e5-5ed8-412a-9633-fe178164a2e0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Piya Miang-lae <piyamianglae.dev@gmail.com>"
+    },
+    "s_34b552c041ff4a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f84-7fe0-7ba1-aee5-91d8c84eb2bc",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Piya Miang-lae <piyamianglae.dev@gmail.com>"
+    },
+    "s_65ceea5e466540": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f69-03e1-7c42-bd34-238e9f3646f5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Piya Miang-lae <piyamianglae.dev@gmail.com>"
+    },
+    "s_9132ef14d3c629": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f67-f8c3-71c0-8d56-1e1b0b648f8e",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Piya Miang-lae <piyamianglae.dev@gmail.com>"
+    },
+    "s_ceca5d62331e72": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f70-a6de-7081-8582-cee37c677950",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Piya Miang-lae <piyamianglae.dev@gmail.com>"
+    },
+    "s_f165a344ea9e2e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f6e-9fc9-7a50-b38e-3a1e0bf7b829",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Piya Miang-lae <piyamianglae.dev@gmail.com>"
+    },
+    "s_f6ba8d8474024e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f66-a87d-7d22-b7d4-6da919f2d4d6",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Piya Miang-lae <piyamianglae.dev@gmail.com>"
+    }
+  }
+}
