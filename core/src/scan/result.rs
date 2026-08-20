@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub enum Verdict {
     Clean,
     Malicious,
+    Error,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -28,6 +29,8 @@ pub struct ScanResult {
     pub sha256: String,
     pub verdict: Verdict,
     pub findings: Vec<Finding>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
     pub scanned_at_unix: i64,
 }
 
@@ -47,19 +50,21 @@ mod tests {
                 kind: DetectionKind::Yara,
                 label: "EvilRule".into(),
             }],
+            error: None,
             scanned_at_unix: 1_700_000_100,
         };
 
         let json = serde_json::to_string(&result).unwrap();
         let deserialized: ScanResult = serde_json::from_str(&json).unwrap();
 
+        assert!(!json.contains("\"error\""));
         assert_eq!(result, deserialized);
     }
 
     #[test]
     fn verdict_serializes_lowercase() {
-        let json = serde_json::to_string(&Verdict::Clean).unwrap();
+        let json = serde_json::to_string(&Verdict::Error).unwrap();
 
-        assert_eq!(json, r#""clean""#);
+        assert_eq!(json, r#""error""#);
     }
 }

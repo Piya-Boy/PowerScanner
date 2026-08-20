@@ -11,10 +11,10 @@ const CHANNEL_CAP: usize = 256;
 const DISCONNECTED_MESSAGE: &str = "scan worker disconnected";
 
 pub enum ScanMsg {
-    /// One file finished scanning: (path, was_malicious).
+    /// One file finished scanning.
     FileScanned {
         path: String,
-        malicious: bool,
+        verdict: Verdict,
     },
     Progress {
         done: usize,
@@ -23,6 +23,7 @@ pub enum ScanMsg {
     Finished {
         results: Vec<ScanResult>,
         malicious: usize,
+        errors: usize,
     },
     Error(String),
 }
@@ -39,6 +40,7 @@ pub enum Phase {
     Done {
         scanned: usize,
         malicious: usize,
+        errors: usize,
     },
     Failed(String),
 }
@@ -47,7 +49,7 @@ pub enum Phase {
 #[derive(Clone, PartialEq, Debug)]
 pub struct StreamLine {
     pub path: String,
-    pub malicious: bool,
+    pub verdict: Verdict,
 }
 
 #[derive(Default)]
@@ -60,6 +62,8 @@ pub struct AppState {
     pub only_bad: bool,
     /// Cumulative malicious count; unlike `stream`, this is never truncated.
     pub malicious_seen: usize,
+    /// Cumulative scan-error count; unlike `stream`, this is never truncated.
+    pub errors_seen: usize,
     pub started_at: Option<Instant>,
     pub elapsed: Duration,
 }
@@ -111,7 +115,7 @@ impl AppState {
 
         self.results
             .iter()
-            .filter(|result| !self.only_bad || matches!(result.verdict, Verdict::Malicious))
+            .filter(|result| !self.only_bad || !matches!(result.verdict, Verdict::Clean))
             .filter(|result| {
                 if query.is_empty() {
                     return true;
@@ -123,7 +127,8 @@ impl AppState {
                     .map(|finding| finding.label.as_str())
                     .collect::<Vec<_>>()
                     .join(" ");
-                format!("{} {findings}", result.path.to_lowercase())
+                let error = result.error.as_deref().unwrap_or_default();
+                format!("{} {findings} {error}", result.path.to_lowercase())
                     .to_lowercase()
                     .contains(&query)
             })
@@ -139,11 +144,17 @@ impl AppState {
 
 pub fn reduce(state: &mut AppState, msg: ScanMsg) {
     match msg {
-        ScanMsg::FileScanned { path, malicious } => {
-            if malicious {
-                state.malicious_seen = state.malicious_seen.saturating_add(1);
+        ScanMsg::FileScanned { path, verdict } => {
+            match verdict {
+                Verdict::Malicious => {
+                    state.malicious_seen = state.malicious_seen.saturating_add(1);
+                }
+                Verdict::Error => {
+                    state.errors_seen = state.errors_seen.saturating_add(1);
+                }
+                Verdict::Clean => {}
             }
-            state.stream.push_back(StreamLine { path, malicious });
+            state.stream.push_back(StreamLine { path, verdict });
             while state.stream.len() > STREAM_CAP {
                 state.stream.pop_front();
             }
@@ -159,11 +170,17 @@ pub fn reduce(state: &mut AppState, msg: ScanMsg) {
                 preset,
             };
         }
-        ScanMsg::Finished { results, malicious } => {
+        ScanMsg::Finished {
+            results,
+            malicious,
+            errors,
+        } => {
             state.malicious_seen = malicious;
+            state.errors_seen = errors;
             state.phase = Phase::Done {
                 scanned: results.len(),
                 malicious,
+                errors,
             };
             state.results = results;
             state.stream.clear();
@@ -240,13 +257,21 @@ fn run_scan(preset: ScanPreset, tx: SyncSender<ScanMsg>) {
         .iter()
         .filter(|result| matches!(result.verdict, Verdict::Malicious))
         .count();
+    let errors = results
+        .iter()
+        .filter(|result| matches!(result.verdict, Verdict::Error))
+        .count();
 
     if let Err(error) = persist_results(&results) {
         send_error(&tx, format!("persist signed results: {error}"));
         return;
     }
 
-    let _ = tx.send(ScanMsg::Finished { results, malicious });
+    let _ = tx.send(ScanMsg::Finished {
+        results,
+        malicious,
+        errors,
+    });
 }
 
 fn persist_results(results: &[ScanResult]) -> powerscanner_core::error::PsResult<()> {
@@ -271,7 +296,7 @@ fn send_result_update(tx: &SyncSender<ScanMsg>, result: &ScanResult, done: usize
     if tx
         .send(ScanMsg::FileScanned {
             path: result.path.clone(),
-            malicious: matches!(result.verdict, Verdict::Malicious),
+            verdict: result.verdict.clone(),
         })
         .is_ok()
     {
@@ -315,6 +340,7 @@ mod tests {
             } else {
                 Vec::new()
             },
+            error: None,
             scanned_at_unix: 0,
         }
     }
@@ -348,7 +374,7 @@ mod tests {
         let mut state = AppState::default();
         state.stream.push_back(StreamLine {
             path: "x".to_string(),
-            malicious: false,
+            verdict: Verdict::Clean,
         });
 
         reduce(
@@ -356,6 +382,7 @@ mod tests {
             ScanMsg::Finished {
                 results: vec![result("a", true), result("b", false)],
                 malicious: 1,
+                errors: 0,
             },
         );
 
@@ -364,6 +391,7 @@ mod tests {
             Phase::Done {
                 scanned: 2,
                 malicious: 1,
+                errors: 0,
             }
         );
         assert_eq!(state.results.len(), 2);
@@ -381,7 +409,7 @@ mod tests {
                 &mut state,
                 ScanMsg::FileScanned {
                     path: format!("f{index}"),
-                    malicious: false,
+                    verdict: Verdict::Clean,
                 },
             );
         }
@@ -399,14 +427,22 @@ mod tests {
                 &mut state,
                 ScanMsg::FileScanned {
                     path: format!("f{index}"),
-                    malicious: index % 2 == 0,
+                    verdict: if index % 2 == 0 {
+                        Verdict::Malicious
+                    } else {
+                        Verdict::Clean
+                    },
                 },
             );
         }
 
         assert_eq!(state.malicious_seen, (STREAM_CAP + 50).div_ceil(2));
         assert_eq!(
-            state.stream.iter().filter(|line| line.malicious).count(),
+            state
+                .stream
+                .iter()
+                .filter(|line| matches!(line.verdict, Verdict::Malicious))
+                .count(),
             STREAM_CAP / 2
         );
     }
@@ -453,7 +489,8 @@ mod tests {
 
         assert!(matches!(
             receiver.recv(),
-            Ok(ScanMsg::FileScanned { path, malicious }) if path == "sample" && malicious
+            Ok(ScanMsg::FileScanned { path, verdict })
+                if path == "sample" && matches!(verdict, Verdict::Malicious)
         ));
         assert!(matches!(
             receiver.recv(),
@@ -481,5 +518,32 @@ mod tests {
 
         state.only_bad = false;
         assert_eq!(state.visible_results().len(), 2);
+    }
+
+    #[test]
+    fn error_result_is_visible_and_counted_separately() {
+        let mut error = result(r"C:\locked.exe", false);
+        error.verdict = Verdict::Error;
+        error.error = Some("access denied".to_string());
+        let mut state = AppState {
+            results: vec![error.clone()],
+            only_bad: true,
+            ..AppState::default()
+        };
+
+        reduce(
+            &mut state,
+            ScanMsg::FileScanned {
+                path: error.path.clone(),
+                verdict: error.verdict.clone(),
+            },
+        );
+
+        assert_eq!(state.malicious_seen, 0);
+        assert_eq!(state.errors_seen, 1);
+        assert_eq!(state.visible_results(), vec![&error]);
+
+        state.filter = "access denied".to_string();
+        assert_eq!(state.visible_results(), vec![&error]);
     }
 }

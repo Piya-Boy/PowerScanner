@@ -120,6 +120,7 @@ mod tests {
                 kind: DetectionKind::Hash,
                 label: "blacklist".to_string(),
             }],
+            error: None,
             scanned_at_unix: 1_700_000_050,
         }
     }

@@ -20,6 +20,7 @@ impl PowerScannerApp {
         self.state.stream.clear();
         self.state.results.clear();
         self.state.malicious_seen = 0;
+        self.state.errors_seen = 0;
         self.state.filter.clear();
         self.state.only_bad = false;
         self.state.started_at = Some(Instant::now());
@@ -47,7 +48,9 @@ impl eframe::App for PowerScannerApp {
                     Phase::Scanning { preset, .. } => {
                         format!("scanning ({})", preset_name(*preset))
                     }
-                    Phase::Done { malicious, .. } => format!("done - {malicious} malicious"),
+                    Phase::Done {
+                        malicious, errors, ..
+                    } => format!("done - {malicious} malicious, {errors} errors"),
                     Phase::Failed(_) => "error".to_string(),
                 };
                 ring::circular_progress(ui, self.state.fraction(), &phase_label);
@@ -77,14 +80,21 @@ impl eframe::App for PowerScannerApp {
             });
 
             ui.add_space(10.0);
-            let (scanned, malicious) = match &self.state.phase {
-                Phase::Scanning { done, .. } => (*done, self.state.malicious_seen),
-                Phase::Done { scanned, malicious } => (*scanned, *malicious),
-                _ => (0, 0),
+            let (scanned, malicious, errors) = match &self.state.phase {
+                Phase::Scanning { done, .. } => {
+                    (*done, self.state.malicious_seen, self.state.errors_seen)
+                }
+                Phase::Done {
+                    scanned,
+                    malicious,
+                    errors,
+                } => (*scanned, *malicious, *errors),
+                _ => (0, 0, 0),
             };
             ui.horizontal(|ui| {
                 metric(ui, "Scanned", &scanned.to_string());
                 metric(ui, "Malicious", &malicious.to_string());
+                metric(ui, "Errors", &errors.to_string());
                 metric(
                     ui,
                     "Elapsed",
@@ -119,7 +129,11 @@ impl PowerScannerApp {
                     ui.weak("idle - press a scan button");
                 }
                 for line in &self.state.stream {
-                    let prefix = if line.malicious { "!" } else { "+" };
+                    let prefix = match line.verdict {
+                        Verdict::Malicious => "!",
+                        Verdict::Error => "x",
+                        Verdict::Clean => "+",
+                    };
                     ui.monospace(format!("{prefix} {}", line.path));
                 }
             });
@@ -151,14 +165,18 @@ impl PowerScannerApp {
                                 Verdict::Clean => {
                                     ui.weak("clean");
                                 }
+                                Verdict::Error => {
+                                    ui.colored_label(egui::Color32::YELLOW, "error");
+                                }
                             }
                             ui.label(&result.path);
                             ui.label(
                                 result
                                     .findings
                                     .first()
-                                    .map(|finding| finding.label.as_str())
-                                    .unwrap_or("-"),
+                                    .map(|finding| finding.label.clone())
+                                    .or_else(|| result.error.clone())
+                                    .unwrap_or_else(|| "-".to_string()),
                             );
                             ui.label(
                                 result

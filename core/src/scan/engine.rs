@@ -60,6 +60,7 @@ pub fn scan_entry(cfg: &ScanConfig<'_>, entry: &FileEntry) -> PsResult<ScanResul
         sha256,
         verdict,
         findings,
+        error: None,
         scanned_at_unix: cfg.now_unix,
     })
 }
@@ -102,15 +103,19 @@ where
     entries_to_scan
         .into_par_iter()
         .map(|entry| {
-            let result = scan_entry(cfg, entry).unwrap_or_else(|_| ScanResult {
-                path: entry.path.to_string_lossy().into_owned(),
-                size: entry.size,
-                modified_unix: entry.mtime_unix,
-                sha256: String::new(),
-                verdict: Verdict::Clean,
-                findings: Vec::new(),
-                scanned_at_unix: cfg.now_unix,
-            });
+            let result = match scan_entry(cfg, entry) {
+                Ok(result) => result,
+                Err(error) => ScanResult {
+                    path: entry.path.to_string_lossy().into_owned(),
+                    size: entry.size,
+                    modified_unix: entry.mtime_unix,
+                    sha256: String::new(),
+                    verdict: Verdict::Error,
+                    findings: Vec::new(),
+                    error: Some(error.to_string()),
+                    scanned_at_unix: cfg.now_unix,
+                },
+            };
             let mut completed = match progress.lock() {
                 Ok(completed) => completed,
                 Err(poisoned) => poisoned.into_inner(),
@@ -278,6 +283,47 @@ mod tests {
             .iter()
             .any(|finding| finding.kind == DetectionKind::Hash));
         drop(file);
+    }
+
+    #[test]
+    fn scan_all_returns_error_result_for_unreadable_entry() {
+        let rules = compile_from_sources(&[RULE.to_string()]).unwrap();
+        let hashes = HashDb::from_text("");
+        let entry = nonexistent_entry();
+
+        let results = scan_all_with_progress(
+            &config(&hashes, &rules),
+            &[entry],
+            &ScanCache::new(),
+            |_, _, _| {},
+        );
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].verdict, Verdict::Error);
+        assert!(results[0].findings.is_empty());
+        assert!(results[0].sha256.is_empty());
+        assert!(results[0]
+            .error
+            .as_deref()
+            .is_some_and(|message| message.starts_with("io error:")));
+    }
+
+    fn nonexistent_entry() -> FileEntry {
+        let process_id = std::process::id();
+
+        loop {
+            let counter = TEMP_FILE_COUNTER.fetch_add(1, Ordering::Relaxed);
+            let path = std::env::temp_dir().join(format!(
+                "powerscanner-engine-missing-{process_id}-{counter}.bin"
+            ));
+            if !path.exists() {
+                return FileEntry {
+                    path,
+                    size: 0,
+                    mtime_unix: 1,
+                };
+            }
+        }
     }
 
     fn write_oversized_temp() -> (TempFile, FileEntry) {
