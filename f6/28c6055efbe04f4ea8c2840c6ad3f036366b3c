@@ -1,0 +1,44 @@
+docs/superpowers/plans/2026-08-17-powerscanner-updater.md
+  s_148c8801b0dff6::t_321d826ac35fe6 1208-1209
+  s_148c8801b0dff6::t_4bcc4babecca08 172-173
+  s_148c8801b0dff6::t_4de4ab2c16a8bd 1410-1431
+  s_148c8801b0dff6::t_edaa0fa09f7cfc 1-87,95-171,174-1207,1210-1249,1262-1269,1278-1281,1283-1285,1287-1289,1297-1301,1304-1306,1328-1329,1351-1409,1432-1451,1453-1457,1459-1530,1532-1534,1546,1550,1552,1554-1559,1563,1566-1569,1571,1597-1599,1602-1750,1752-1756,1775-1924,1933-1958,1965-1981
+  s_148c8801b0dff6::t_0d9e8719f1002d 1290-1294
+  s_148c8801b0dff6::t_656cbb37353a7f 1925-1932
+  s_148c8801b0dff6::t_a4ef26f7d90e64 1751,1757-1774
+  s_148c8801b0dff6::t_bf00cc3ee98a5e 1959-1964
+  s_148c8801b0dff6::t_f6e23db5e628a7 1330-1350
+  s_148c8801b0dff6::t_2c15f1d8782a7b 1250-1261,1270-1277,1282,1286
+  s_148c8801b0dff6::t_32f7d6af42f6b9 1452,1458
+  s_148c8801b0dff6::t_c7cd335ca0d4be 88-94
+  s_148c8801b0dff6::t_a049df4626f734 1531,1535-1545,1547-1549,1551,1553,1560-1562,1564-1565,1570,1572-1596,1600-1601
+  s_148c8801b0dff6::t_e19e14f887ba37 1295-1296,1302-1303,1307-1327
+.ai/MODEL_ROUTER.md
+  s_148c8801b0dff6::t_71a7604afe2ef7 70,74
+docs/ARCHITECTURE.md
+  s_2c340838b9f869::t_f789d59ca23005 3-75,79-286,289-292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f628c6055efbe04f4ea8c2840c6ad3f036366b3c",
+  "prompts": {},
+  "sessions": {
+    "s_148c8801b0dff6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d27862d-c562-4e78-9304-7ac2b7f84592",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Piya Miang-lae <piyamianglae.dev@gmail.com>"
+    },
+    "s_2c340838b9f869": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d32d4e5-5ed8-412a-9633-fe178164a2e0",
+        "model": "unknown"
+      },
+      "human_author": "Piya Miang-lae <piyamianglae.dev@gmail.com>"
+    }
+  }
+}
