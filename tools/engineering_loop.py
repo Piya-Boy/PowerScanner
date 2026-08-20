@@ -215,8 +215,22 @@ def run_verify(task: dict, dry_run: bool) -> tuple[bool, str]:
     if dry_run:
         return True, "[dry-run] verify not run."
     proc = subprocess.run(verify, cwd=REPO, shell=True, capture_output=True, text=True)
-    tail = (proc.stdout + proc.stderr).strip().splitlines()[-15:]
-    return proc.returncode == 0, "\n".join(tail)
+    out = proc.stdout + proc.stderr
+    tail = out.strip().splitlines()[-15:]
+    if proc.returncode != 0:
+        return False, "\n".join(tail)
+    # `cargo test <filter>` exits 0 EVEN WHEN THE FILTER MATCHES NOTHING
+    # ("running 0 tests"). That is how the loop previously recorded fake PASSes
+    # for tasks Codex never implemented. For any task that declares it must run
+    # tests (min_tests>0), require that many passing tests actually ran.
+    min_tests = task.get("min_tests", 0)
+    if min_tests > 0:
+        import re
+        passed = sum(int(m) for m in re.findall(r"(\d+) passed", out))
+        if passed < min_tests:
+            return False, (f"expected >= {min_tests} passing tests but only {passed} ran "
+                           f"(likely the module/tests were never created).\n" + "\n".join(tail))
+    return True, "\n".join(tail)
 
 
 def append_ai_state(task: dict, status: str, model: str, note: str) -> None:
