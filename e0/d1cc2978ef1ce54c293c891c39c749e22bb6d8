@@ -1,0 +1,27 @@
+signatures/NOTICE.md
+  s_34b552c041ff4a::t_28dd1eb3a3168a 3-6,29-30
+  s_34b552c041ff4a::t_e0b35752c7c1a3 20
+  s_34b552c041ff4a::t_415b2544251326 25
+signatures/MANIFEST.json
+  s_34b552c041ff4a::t_8daaf542fe9489 4-6
+  s_34b552c041ff4a::t_e0b35752c7c1a3 10,15
+  s_34b552c041ff4a::t_1672f82c571064 14
+signatures/.bundle-date
+  s_34b552c041ff4a::t_ab7c6aeebb158f 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e0d1cc2978ef1ce54c293c891c39c749e22bb6d8",
+  "prompts": {},
+  "sessions": {
+    "s_34b552c041ff4a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f84-7fe0-7ba1-aee5-91d8c84eb2bc",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Piya Miang-lae <piyamianglae.dev@gmail.com>"
+    }
+  }
+}
