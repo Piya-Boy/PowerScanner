@@ -1,0 +1,36 @@
+core/Cargo.toml
+  s_65f2f50773cb7e::t_94d0044a553cf7 1-22
+core/src/lib.rs
+  s_65f2f50773cb7e::t_94d0044a553cf7 1-3
+core/src/error.rs
+  s_65f2f50773cb7e::t_94d0044a553cf7 21-37
+  s_9d284dda4b9d2e::t_6dd3ab9dd25850 1-4,15-20
+  s_9d284dda4b9d2e::t_0846c6d77b20ef 5-14
+Cargo.toml
+  s_65f2f50773cb7e::t_94d0044a553cf7 1-2,4-23
+  s_9d284dda4b9d2e::t_6dd3ab9dd25850 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "685116e8f30c5c15b6fd3d48992e21dcb2ddfba1",
+  "prompts": {},
+  "sessions": {
+    "s_65f2f50773cb7e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f55-dc58-7d90-801d-53d235bcf287",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Piya Miang-lae <piyamianglae.dev@gmail.com>"
+    },
+    "s_9d284dda4b9d2e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f5f-8227-7860-aa99-530a0befb85a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Piya Miang-lae <piyamianglae.dev@gmail.com>"
+    }
+  }
+}
