@@ -1,0 +1,19 @@
+core/src/signatures/store.rs
+  s_2c340838b9f869::t_622112c6050381 17-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5d263fd9180af5851eafda53cb73d3904acdccb1",
+  "prompts": {},
+  "sessions": {
+    "s_2c340838b9f869": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d32d4e5-5ed8-412a-9633-fe178164a2e0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Piya Miang-lae <piyamianglae.dev@gmail.com>"
+    }
+  }
+}
