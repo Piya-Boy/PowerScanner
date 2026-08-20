@@ -14,6 +14,15 @@ pub const BUNDLE_SALT: &[u8] = b"powerscanner-bundle-v1-salt-001";
 
 static BUNDLE_TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
 
+/// The seed for the portable bundle key.
+///
+/// SECURITY NOTE (ADR-004, review finding F2): the XOR split below is
+/// OBFUSCATION, not protection. The effective secret is embedded in the binary
+/// and can be recovered by anyone who reverse-engineers the shipped executable;
+/// splitting it across two arrays only raises the cost of a trivial `strings`
+/// dump. This is deliberate and consistent with the stated threat model —
+/// endpoint-side rule encryption is cost-raising, never unbreakable on a
+/// machine the attacker controls. Do NOT treat this value as confidential.
 fn embedded_secret() -> [u8; 32] {
     const A: [u8; 32] = [
         0x9e, 0x37, 0x79, 0xb9, 0x7f, 0x4a, 0x7c, 0x15, 0xf3, 0x9c, 0xc0, 0x60, 0x5c, 0xed, 0xc8,
