@@ -42,7 +42,7 @@ binding, cross-process file locks, atomic seal). Three findings:
 | # | Sev | Location | Finding | Disposition |
 |---|-----|----------|---------|-------------|
 | F1 | HIGH | `core/src/scan/engine.rs:105` | A per-file scan error (unreadable/locked file) was swallowed by `unwrap_or_else` into `Verdict::Clean`. Contradicted ARCHITECTURE ("absence of detection is never reported as clean") and created an evasion gap. | **Resolved by FIX-001**; independent re-review clean |
-| F2 | LOW | `core/src/signatures/store.rs:17` | `embedded_secret()` XOR-split is obfuscation, not security. Consistent with ADR-004 (cost-raising, not absolute) but should be commented as such so no one mistakes it for protection. | comment-only, optional |
+| F2 | LOW | `core/src/signatures/store.rs:17` | `embedded_secret()` XOR-split is obfuscation, not security. Consistent with ADR-004 (cost-raising, not absolute) but should be commented as such so no one mistakes it for protection. | **Resolved** — SECURITY NOTE added to `embedded_secret` |
 | F3 | LOW | `core/src/crypto/signer.rs:37` | `unreachable!()` sits in a library path (technically the "no panic in lib" rule). The HMAC "any key length" invariant is genuinely total, so it cannot fire; acceptable with its comment. | accepted |
 
 Note: the per-task PASS rows below were authored by the engineering loop (Codex
