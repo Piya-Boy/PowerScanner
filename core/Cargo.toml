@@ -13,6 +13,7 @@ sha2.workspace = true
 hmac.workspace = true
 aes-gcm.workspace = true
 argon2.workspace = true
+fs4.workspace = true
 rayon.workspace = true
 walkdir.workspace = true
 yara-x.workspace = true
