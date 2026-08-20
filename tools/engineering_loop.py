@@ -128,7 +128,6 @@ def build_prompt(task: dict, model: str) -> str:
     """Handoff prompt fed to `codex exec`. Mirrors tasks/handoff/*.codex.md."""
     ac = "\n".join(f"  - {c}" for c in task.get("acceptance", []))
     files = "\n".join(f"  - {f}" for f in task.get("files", [])) or "  (see plan)"
-    branch = task.get("branch", f"feature/{task['id'].lower()}")
     notes = task.get("notes", "")
     notes_block = f"\n## Task-specific guidance (overrides the plan where it conflicts)\n{notes}\n" if notes else ""
     return f"""You are the Engineering specialist on the PowerScanner project.
@@ -159,7 +158,11 @@ STOP and report BLOCKED; do not guess.
 - Rust edition 2021, MSRV 1.74, Windows x64. `core` must not depend on any GUI crate.
 - Authenticated encryption/signatures on all persisted files; no hardcoded keys/secrets.
 - No `unwrap()`/`expect()` in library paths (tests excepted). No string concat into commands/paths.
-- Work on branch `{branch}`. Conventional Commits. NO `Co-Authored-By` trailer. Author = git user.
+- GIT BRANCH: you are ALREADY on the correct working branch. Do NOT run
+  `git checkout`, `git switch`, or `git branch` — switching branches would
+  discard prior tasks' work and the project tooling. Stay on the current branch.
+- Do NOT `git add .` or `git add -A`. Stage ONLY the files in scope above.
+- Conventional Commits. NO `Co-Authored-By` trailer. Author = git user.
 - Commit atomically when the task is green: `{task.get('commit', 'feat: ' + task['title'])}`.
 
 ## Assigned model for this attempt: {model}
@@ -264,12 +267,36 @@ def process_task(task: dict, state: dict, args) -> str:
     return "BLOCKED"
 
 
+def ensure_branch(branch: str, dry_run: bool) -> tuple[bool, str]:
+    """Switch to (or create off current HEAD) the single working branch. All
+    tasks run here; Codex is forbidden from switching branches, so this is the
+    one place branch state is decided."""
+    cur = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                         cwd=REPO, capture_output=True, text=True).stdout.strip()
+    if cur == branch:
+        return True, f"already on {branch}"
+    if dry_run:
+        return True, f"[dry-run] would checkout {branch} (from {cur})"
+    exists = subprocess.run(["git", "rev-parse", "--verify", "--quiet", branch],
+                            cwd=REPO, capture_output=True, text=True).returncode == 0
+    args = ["git", "checkout", branch] if exists else ["git", "checkout", "-b", branch]
+    proc = subprocess.run(args, cwd=REPO, capture_output=True, text=True)
+    if proc.returncode != 0:
+        return False, (proc.stderr or proc.stdout).strip()
+    return True, f"on {branch} (from {cur}, {'existing' if exists else 'new'})"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="PowerScanner Codex engineering loop.")
     ap.add_argument("--task", help="run only this task id (e.g. TASK-001)")
     ap.add_argument("--max", type=int, default=0, help="max tasks this run (0 = unlimited)")
     ap.add_argument("--dry-run", action="store_true", help="print prompts, run nothing")
     ap.add_argument("--yes", action="store_true", help="skip the pre-run confirmation")
+    ap.add_argument("--branch", default="feature/phase1-impl",
+                    help="single working branch for ALL tasks (created off the "
+                         "current HEAD if absent). Codex is told never to switch "
+                         "branches; the loop owns branch state so each task's "
+                         "commits stack and deps actually build on each other.")
     ap.add_argument("--sandbox", default="bypass",
                     choices=["bypass", "read-only", "workspace-write", "danger-full-access"],
                     help="codex sandbox policy. Default 'bypass' uses "
@@ -283,6 +310,12 @@ def main() -> int:
         print("Preflight failed:")
         for p in problems:
             print(f"  - {p}")
+        return 2
+
+    ok, msg = ensure_branch(args.branch, args.dry_run)
+    print(f"Branch: {msg}")
+    if not ok:
+        print("Could not establish the working branch; aborting.")
         return 2
 
     meta = load_json(TASKS_JSON)
