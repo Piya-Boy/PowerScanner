@@ -15,3 +15,7 @@ Thumbs.db
 # Keep the shipped rule bundle committed (do NOT ignore):
 # signatures/rules/bundled.yar
 # signatures/rules/bundled.yarc
+
+# Python cache
+tools/__pycache__/
+*.pyc
