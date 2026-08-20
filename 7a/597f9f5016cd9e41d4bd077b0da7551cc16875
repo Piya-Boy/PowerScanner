@@ -1,0 +1,32 @@
+core/src/sink/jsonl.rs
+  s_34b552c041ff4a::t_d7e88942fdd3b3 123
+core/src/scan/result.rs
+  s_34b552c041ff4a::t_eedade86f40589 8,32-33,53,66,68
+  s_34b552c041ff4a::t_5643d4f84c974f 60
+core/src/scan/engine.rs
+  s_34b552c041ff4a::t_3f1484157eca2e 316-318
+  s_34b552c041ff4a::t_eedade86f40589 63,106-118,288-315,319-327
+  s_34b552c041ff4a::t_83f671b6789d0a 328
+gui/src/app.rs
+  s_34b552c041ff4a::t_7cbaf378458625 130-131,544-546
+  s_34b552c041ff4a::t_310cae220ce0ab 14,17,26,43,52,65-66,118,147-155,157,173-177,179,183,260-263,270-274,299,343,377,385,394,412,430-434,441-445,492-493,522-543,547
+  s_34b552c041ff4a::t_466cf6b3fdba26 548
+gui/src/main.rs
+  s_34b552c041ff4a::t_0607cda5122901 23,51-53,83-92,97,132-136,168-170,177-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7a597f9f5016cd9e41d4bd077b0da7551cc16875",
+  "prompts": {},
+  "sessions": {
+    "s_34b552c041ff4a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f84-7fe0-7ba1-aee5-91d8c84eb2bc",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Piya Miang-lae <piyamianglae.dev@gmail.com>"
+    }
+  }
+}
