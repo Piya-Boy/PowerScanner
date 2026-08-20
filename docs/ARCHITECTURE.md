@@ -51,8 +51,10 @@ processes cooperate, each with a distinct privilege level and trust boundary:
   never a silent fallback. Rules exist in plaintext only in process memory.
 - **TB-4 — Results at rest ↔ everyone else on the box.** Result files are
   HMAC-signed and live in an ACL-restricted directory. Any local process
-  (including malware) may *read* them, but cannot forge a valid signature nor
-  alter a line undetectably.
+  (including malware) may *read* them and the machine identifiers used for key
+  derivation. HMAC verification detects offline/manual changes to surviving
+  lines, but does not prevent active local forgery or prove that complete lines
+  were not deleted.
 - **TB-5 — Service (SYSTEM) ↔ app (user).** `psupdater-svc` runs as SYSTEM and
   writes into the install dir; the GUI runs with user rights. The only data the
   service accepts from the app side is the plaintext `app.version` file, which is
@@ -89,12 +91,10 @@ powerscanner/
   something we wrote (results), `Signature` marks a verification failure on
   something we received (manifest).
 - **`crypto/`** — the security core.
-  - `machine_key` — Argon2id KDF over `MachineGuid` (registry) **+ volume serial**,
-    with a distinct per-purpose salt (`SIG_SALT` for the vault, `RESULT_SALT` for
-    the signer). *Discrepancy note:* `docs/SECURITY.md` describes MachineGuid + a
-    fixed salt only; the Phase 1 plan additionally binds the volume serial. The
-    plan is authoritative — binding the volume serial ties the key to the disk,
-    not just the OS install, raising extraction cost. SECURITY.md to be updated.
+  - `machine_key` — Argon2id KDF over `MachineGuid` (registry) **+ volume serial**
+    with `RESULT_SALT` for result signing. Binding the volume serial ties the key
+    to the disk, not just the OS install, raising extraction cost; neither
+    identifier is a secret.
   - `vault` — AES-256-GCM. Blob layout `[12-byte random nonce][ciphertext‖tag]`.
     Fresh nonce per encryption; auth failure ⇒ `PsError::Crypto`, never plaintext.
   - `signer` — HMAC-SHA256 sign/verify, **constant-time** compare, over each
@@ -193,15 +193,16 @@ this is the right channel, the newest version, or an intact download.
 
 | Purpose             | Primitive        | Key / trust anchor                          | Failure mode        |
 |---------------------|------------------|---------------------------------------------|---------------------|
-| Rule DB at rest     | AES-256-GCM      | machine key (Argon2id, `SIG_SALT`)          | tag fail ⇒ error    |
+| Rule DB at rest     | AES-256-GCM      | portable app-embedded key (Argon2id, `BUNDLE_SALT`) | tag fail ⇒ error |
 | Result integrity    | HMAC-SHA256      | machine key (Argon2id, `RESULT_SALT`)       | mismatch ⇒ `Tamper` |
 | Update authenticity | Ed25519          | embedded public key; private key **offline**| verify fail ⇒ drop  |
 | Asset integrity     | SHA-256          | digest inside the *signed* manifest         | mismatch ⇒ drop     |
 
-- **Key derivation.** Argon2id over `MachineGuid` + volume serial + per-purpose
-  salt. No key material in source (ADR-004). Distinct salts guarantee the vault
-  key and the signing key are independent even though both derive from the same
-  machine identity.
+- **Key derivation.** Result signing uses Argon2id over `MachineGuid` + volume
+  serial + `RESULT_SALT`. The signature bundle uses Argon2id over an
+  app-embedded secret + `BUNDLE_SALT`, intentionally portable across machines so
+  releases can ship only `bundle.psenc`. The embedded secret is obfuscation, not
+  a trust anchor; a determined reverse engineer can recover the rules.
 - **Nonce discipline.** Random 96-bit nonce per GCM encryption, stored beside the
   ciphertext. Never reused, never derived from data.
 - **Constant-time.** HMAC verification and any digest/tag comparison use
@@ -215,7 +216,7 @@ this is the right channel, the newest version, or an intact download.
 | # | Threat (STRIDE)                                   | Boundary | Mitigation |
 |---|---------------------------------------------------|----------|------------|
 | T1| Malware forges/alters scan results (Tampering)    | TB-4     | HMAC-SHA256 per line + ACL dir. Tamper-**evident**, not preventable — stated honestly. |
-| T2| Attacker extracts the rule set to resell (Info)   | TB-3     | AES-256-GCM + machine-bound key + in-memory-only plaintext. Cost-raising, **not** absolute on an attacker-controlled box. |
+| T2| Attacker extracts the rule set to resell (Info)   | TB-3     | AES-256-GCM + portable embedded bundle key + in-memory-only plaintext. Cost-raising, **not** absolute on an attacker-controlled box. |
 | T3| Forged/MITM'd update (Spoofing/Tampering)         | TB-1     | Ed25519-signed manifest verified before any field is trusted; SHA-256 per asset; https-only. Fail-closed. |
 | S1| Cross-channel manifest swap (validly signed)      | TB-1     | Manifest `channel` + `asset_name` bound to the requested channel; other-channel manifest rejected. |
 | S2| Replay of an older, validly-signed vulnerable ver | TB-1     | Per-channel high-water mark of the greatest version ever applied; anything ≤ hwm refused even if signed. |
@@ -273,8 +274,9 @@ a rewrite (ADR-006).
   `psupdater-svc.exe`, `signatures\` (`bundle.psenc`, `MANIFEST.json`, hwm
   files), and `app.version`.
 - **Results & cache.** `%ProgramData%\PowerScanner\results\` and `\cache\`,
-  ACL-restricted to SYSTEM + Administrators (writable by the engine, readable by
-  operators, not forgeable by a standard-user malware process).
+  ACL-restricted to SYSTEM, Administrators, and the invoking directory owner
+  (writable by the engine, readable by operators, not forgeable by unrelated
+  standard-user malware).
 - **Updater service.** `PowerScannerUpdater`, LocalSystem, auto-start, installed
   via `tools/install-updater.ps1` (idempotent, elevated). Polls every 6h,
   logs to `updater.log`, keeps `.bak` for rollback.

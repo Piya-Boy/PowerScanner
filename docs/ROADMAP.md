@@ -13,6 +13,10 @@ Status: planning complete, implementation not started.
 - Autorun / registry / startup inspection.
 
 ## Phase 3 — Operations
+- **Auto-updater** (planned — `docs/superpowers/plans/2026-08-17-powerscanner-updater.md`):
+  Windows Service polls GitHub Releases every 6h, Ed25519-signed manifests,
+  atomic signature replace + auto-restart app swap. Fixes SoSecure's manual-update
+  flaw (user forgets to update, runs stale signatures). 12 tasks.
 - Real-time watch (ReadDirectoryChangesW).
 - Scheduled scans.
 - SQLite result storage (`ResultSink` seam) + backend/server sync

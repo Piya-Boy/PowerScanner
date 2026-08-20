@@ -21,7 +21,7 @@
       "acceptance": [
         "cargo test -p powerscanner-core error:: -> tests pass",
         "PsError is a thiserror enum: Io(#[from]), Crypto, Signature, Yara, Config, Tamper; plus PsResult<T>",
-        "edition 2021, MSRV 1.74, deps pinned per Global Constraints",
+        "edition 2021, MSRV 1.88, deps pinned per Global Constraints",
         "core does not depend on any GUI crate; no unwrap/expect outside tests"
       ],
       "min_tests": 2
@@ -408,6 +408,32 @@
         "no plaintext rules shipped; Defender-safe"
       ],
       "min_tests": 0
+    },
+    {
+      "id": "FIX-001",
+      "title": "Scan error must not read as Clean",
+      "objective": "A per-file scan failure (unreadable/locked file, hash error) must surface as an explicit error verdict, never a silent Verdict::Clean. Fixes PM review finding F1.",
+      "depends_on": [
+        "TASK-016"
+      ],
+      "impl_model": "5.6 Sol",
+      "files": [
+        "core/src/scan/result.rs",
+        "core/src/scan/engine.rs",
+        "core/src/scan/mod.rs",
+        "gui/src/app.rs"
+      ],
+      "verify": "cargo test --workspace",
+      "commit": "fix(scan): surface per-file scan errors instead of false Clean",
+      "min_tests": 58,
+      "notes": "PM review F1: in core/src/scan/engine.rs, scan_all_with_progress currently does `scan_entry(cfg, entry).unwrap_or_else(|_| ScanResult{ ... verdict: Verdict::Clean ... })` — a file that fails to hash/read is silently reported CLEAN. This contradicts docs/ARCHITECTURE.md ('absence of detection is never reported as clean') and lets malware that locks its own file evade detection.\n\nREQUIRED CHANGES:\n1. In core/src/scan/result.rs add a third Verdict variant `Error` (serde rename 'error'). Add an OPTIONAL `error: Option<String>` field to ScanResult (serde default, skip_serializing_if None) OR carry the message via a Finding — pick the smaller change but the error MUST be represented, not dropped.\n2. In engine.rs, on scan_entry Err, produce a ScanResult with `verdict: Verdict::Error` and the error text — do NOT map to Clean. Keep sha256 empty for the error case.\n3. Update gui/src/app.rs: the malicious metric must NOT count Error results as clean; show Error rows distinctly (e.g. count/label). Do not let an Error verdict be filtered away as if clean.\n4. ADD TESTS: (a) a file that cannot be read yields Verdict::Error (simulate via a path that does not exist or a directory), (b) an Error result is not counted as Malicious NOR silently dropped. Keep ALL existing tests green.\n\nDo NOT weaken any existing detection. Whole-workspace `cargo test` must stay green (currently 57 passing; this task adds at least one more, so min is 58).",
+      "acceptance": [
+        "Verdict has an Error variant; a scan_entry failure yields Verdict::Error, never Clean",
+        "the error message is preserved on the ScanResult (not dropped)",
+        "GUI does not count/treat Error results as clean; they are visible",
+        "new test proves unreadable file -> Verdict::Error; all prior tests still pass",
+        "cargo clippy --workspace clean; no unwrap/expect added to library paths"
+      ]
     }
   ]
 }
