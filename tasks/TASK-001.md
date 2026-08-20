@@ -30,7 +30,7 @@ None.
       io conversion).
 - [ ] Workspace compiles clean.
 - [ ] `PsError` derives Error+Display via thiserror; `#[from] std::io::Error`.
-- [ ] Edition 2021, MSRV 1.74, deps pinned per Global Constraints.
+- [ ] Edition 2021, MSRV 1.88, deps pinned per Global Constraints.
 
 ## Constraints
 - No `unwrap`/`expect` outside tests.

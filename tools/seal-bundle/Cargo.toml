@@ -1,0 +1,12 @@
+[package]
+name = "seal-bundle"
+edition = "2021"
+rust-version = "1.88"
+version = "0.1.0"
+publish = false
+
+[dependencies]
+powerscanner-core = { path = "../../core" }
+hex = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }

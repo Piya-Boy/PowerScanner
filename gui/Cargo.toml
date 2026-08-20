@@ -1,0 +1,13 @@
+[package]
+name = "powerscanner-gui"
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[[bin]]
+name = "powerscanner"
+path = "src/main.rs"
+
+[dependencies]
+powerscanner-core = { path = "../core" }
+eframe = { version = "0.33", default-features = false, features = ["default_fonts", "glow"] }

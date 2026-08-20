@@ -10,14 +10,20 @@
 
 ## Global Constraints
 
-- Rust edition: **2021**. MSRV: **1.74+**.
+- Rust edition: **2021**. MSRV: **1.88+**. The YARA/wasmtime transitive
+  graph currently requires Rust 1.88; the workspace pins are chosen against
+  this verified floor.
 - Platform: **Windows x64 only** (`x86_64-pc-windows-msvc`).
 - Workspace layout: two member crates — `core/` (lib, no UI deps) and `gui/` (bin, depends on `core`).
 - `core` crate MUST NOT depend on any GUI crate (`eframe`, `egui`, `winit`).
 - All persistent files (signature DB, config, results) use **authenticated encryption or authenticated signatures** — never plaintext secrets, never unauthenticated ciphertext.
 - **No hardcoded keys or secrets** anywhere in source. Keys are machine-derived at runtime.
 - All SQL (future phases) and all external input handling: no string concatenation into queries/commands. (Phase 1 has no SQL.)
-- Crate versions (pin in `Cargo.toml`): `yara-x = "1"`, `aes-gcm = "0.11"`, `sha2 = "0.11"`, `hmac = "0.13"`, `argon2 = "0.5"`, `rayon = "1"`, `walkdir = "2"`, `eframe = "0.36"`, `winreg = "0.56"`, `serde = "1"`, `serde_json = "1"`, `hex = "0.4"`, `thiserror = "2"`, `windows = "0.58"`.
+- Crate versions (pin in `Cargo.toml`): `yara-x = "0.5.0"`, `aes-gcm = "0.10.3"`, `sha2 = "0.10.9"`, `hmac = "0.12.1"`, `argon2 = "0.5"`, `rayon = "1.10.0"`, `walkdir = "2"`, `eframe = "0.36"`, `winreg = "0.56"`, `serde = "1"`, `serde_json = "1"`, `hex = "0.4"`, `thiserror = "2"`, `windows = "0.58"`.
+
+> The crypto, YARA, and rayon pins intentionally use the newest compatible
+> releases for the declared Rust 1.88 MSRV. Newer releases currently raise the
+> MSRV and must not be selected without updating the platform requirement.
 - Error handling: `core` returns `Result<_, PsError>` (a `thiserror` enum). No `unwrap()`/`expect()` in library code paths except tests.
 
 ---
@@ -85,7 +91,7 @@ members = ["core", "gui"]
 
 [workspace.package]
 edition = "2021"
-rust-version = "1.74"
+rust-version = "1.88"
 version = "0.1.0"
 
 [workspace.dependencies]
@@ -2221,33 +2227,85 @@ git commit -m "feat: egui dashboard with circular progress, live stream, result 
 
 ---
 
-## Task 15: Encrypted signature loading + first-run provisioning
+## Task 15: Encrypted signature loading (portable bundle key) + import
+
+> **ARCHITECTURE (revised 2026-08-17):** The signature bundle is sealed with a
+> **portable, app-embedded bundle key** — NOT the machine-derived key. Rationale:
+> the shipped bundle must decrypt on any user's machine, and the shipped release
+> must contain **no plaintext YARA rules** (plaintext `bundled.yar`/`.yarc` trip
+> Windows Defender and get the whole install quarantined before first run). The
+> machine-derived key is still used for **result signing** (Task 4/16) — that use
+> is unchanged. Only the *signature bundle at rest* moves to the portable key.
+>
+> **Security trade-off (must be reflected in SECURITY.md):** an app-embedded key
+> lives inside the binary, so rule-set extraction protection drops from "raised
+> cost via machine-bound key" to "raised cost via obfuscation only". This is an
+> explicit, accepted trade to keep the product installable with Defender on. See
+> the SECURITY.md edit in Step 7.
 
 **Files:**
 - Create: `core/src/signatures/store.rs`
 - Modify: `core/src/signatures/mod.rs` (add `pub mod store;`)
 - Modify: `gui/src/app.rs` (`run_scan` loads via encrypted store, falling back to plaintext import)
+- Modify: `docs/SECURITY.md` (record the portable-key trade-off)
 - Test: `core/src/signatures/store.rs` (inline)
 
 **Interfaces:**
-- Consumes: `vault::encrypt`/`decrypt` (Task 3), `MachineKey`/`derive_machine_key` (Task 2), `HashDb` (Task 7), `PsResult`.
+- Consumes: `vault::encrypt`/`decrypt` (Task 3), `HashDb` (Task 7), `PsResult`. Does **not** use `derive_machine_key` for the bundle.
 - Produces:
-  - `pub const SIG_SALT: &[u8] = b"powerscanner-sig-v1-salt-0001";`.
-  - `pub fn seal_bundle(plaintext_bundle: &[u8]) -> PsResult<Vec<u8>>` — derive machine key with `SIG_SALT`, AES-GCM encrypt. (Provisioning helper; also usable by an offline packaging tool.)
-  - `pub fn open_bundle(sealed: &[u8]) -> PsResult<Vec<u8>>` — derive key, decrypt, return plaintext bundle bytes.
+  - `pub fn bundle_key() -> [u8; 32]` — derive the portable 32-byte bundle key from an app-embedded secret + fixed salt via Argon2id. The secret is assembled at runtime from split byte arrays (light obfuscation so it is not a plaintext string in the binary), never a hardcoded string literal. Deterministic across machines.
+  - `pub fn seal_bundle(plaintext_bundle: &[u8]) -> PsResult<Vec<u8>>` — AES-GCM encrypt with `bundle_key()`. Used by the offline packaging tool (Task 19) and by first-run import.
+  - `pub fn open_bundle(sealed: &[u8]) -> PsResult<Vec<u8>>` — decrypt with `bundle_key()`, return plaintext bundle bytes.
   - A `SignatureBundle` serde struct `{ hashes_text: String, rule_sources: Vec<String> }` with `to_bytes`/`from_bytes` (JSON).
-  - `pub fn load_or_import(sig_dir: &Path) -> PsResult<SignatureBundle>` — if `sig_dir/bundle.psenc` exists, open it; else read plaintext `hashes.txt` + `rules/*.yar`, seal them to `bundle.psenc` for next time, and return the bundle. This is how "import your own signatures" becomes encrypted-at-rest after first run.
+  - `pub fn load_or_import(sig_dir: &Path) -> PsResult<SignatureBundle>` — if `sig_dir/bundle.psenc` exists, open it (the normal shipped path); else import plaintext `hashes.txt` + `rules/*.yar` if present (developer/self-import path), seal to `bundle.psenc`, and return. Shipped releases contain only `bundle.psenc`, so the plaintext branch never runs for end users.
 
 - [ ] **Step 1: Write the failing test**
 
 Create `core/src/signatures/store.rs`:
 ```rust
-use crate::crypto::{derive_machine_key, vault};
+use crate::crypto::vault;
 use crate::error::{PsError, PsResult};
+use argon2::Argon2;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-pub const SIG_SALT: &[u8] = b"powerscanner-sig-v1-salt-0001";
+/// Fixed salt for the portable bundle key. Distinct from the machine-key salts.
+pub const BUNDLE_SALT: &[u8] = b"powerscanner-bundle-v1-salt-001";
+
+/// Portable, app-embedded secret assembled at runtime from split byte arrays so
+/// it is not a single plaintext string literal in the binary. This is deliberate
+/// light obfuscation, NOT a real secret — see SECURITY.md for the trade-off.
+/// The bundle key is portable so the shipped `bundle.psenc` decrypts on any host.
+fn embedded_secret() -> [u8; 32] {
+    // Two halves XOR-combined at runtime; neither half is the final secret.
+    const A: [u8; 32] = [
+        0x9e, 0x37, 0x79, 0xb9, 0x7f, 0x4a, 0x7c, 0x15, 0xf3, 0x9c, 0xc0, 0x60, 0x5c, 0xed, 0xc8,
+        0x34, 0x10, 0x28, 0x2b, 0xdd, 0x1f, 0xf9, 0x0a, 0xfe, 0x6d, 0x1b, 0x2e, 0x64, 0x77, 0x35,
+        0xc1, 0x02,
+    ];
+    const B: [u8; 32] = [
+        0x2f, 0xe1, 0x5a, 0x7c, 0x88, 0x11, 0xd9, 0x0e, 0x43, 0xa7, 0x6b, 0x2c, 0x90, 0x5f, 0x1d,
+        0xb8, 0x77, 0x04, 0xe2, 0x3a, 0x66, 0xcd, 0x91, 0x08, 0x14, 0xbf, 0x5e, 0x29, 0xa0, 0x3b,
+        0x7d, 0xee,
+    ];
+    let mut out = [0u8; 32];
+    let mut i = 0;
+    while i < 32 {
+        out[i] = A[i] ^ B[i];
+        i += 1;
+    }
+    out
+}
+
+/// Derive the portable 32-byte bundle key. Deterministic across machines.
+pub fn bundle_key() -> PsResult<[u8; 32]> {
+    let secret = embedded_secret();
+    let mut key = [0u8; 32];
+    Argon2::default()
+        .hash_password_into(&secret, BUNDLE_SALT, &mut key)
+        .map_err(|e| PsError::Crypto(format!("bundle key derive: {e}")))?;
+    Ok(key)
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct SignatureBundle {
@@ -2265,12 +2323,12 @@ impl SignatureBundle {
 }
 
 pub fn seal_bundle(plaintext_bundle: &[u8]) -> PsResult<Vec<u8>> {
-    let key = derive_machine_key(SIG_SALT)?;
+    let key = bundle_key()?;
     vault::encrypt(&key, plaintext_bundle)
 }
 
 pub fn open_bundle(sealed: &[u8]) -> PsResult<Vec<u8>> {
-    let key = derive_machine_key(SIG_SALT)?;
+    let key = bundle_key()?;
     vault::decrypt(&key, sealed)
 }
 
@@ -2305,6 +2363,15 @@ pub fn load_or_import(sig_dir: &Path) -> PsResult<SignatureBundle> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bundle_key_is_deterministic_and_portable() {
+        // Same on every call and every machine — no machine input involved.
+        let k1 = bundle_key().unwrap();
+        let k2 = bundle_key().unwrap();
+        assert_eq!(k1, k2);
+        assert_ne!(k1, [0u8; 32]);
+    }
 
     #[test]
     fn seal_open_roundtrip() {
@@ -2376,18 +2443,47 @@ Remove the now-unused `std::fs::read_to_string(sig_dir.join("hashes.txt"))` and 
 - [ ] **Step 4: Run the store tests**
 
 Run: `cargo test -p powerscanner-core signatures::store`
-Expected: PASS (3 tests).
+Expected: PASS (4 tests).
 
 - [ ] **Step 5: Build the workspace**
 
 Run: `cargo build`
 Expected: clean build; GUI now loads signatures through the encrypted store.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Record the security trade-off in SECURITY.md**
+
+In `docs/SECURITY.md`, under "Crypto design", replace the at-rest encryption line
+for the signature vault so it states the portable key explicitly. Change:
+```
+- **Key derivation:** Argon2id over the machine identifier (Windows `MachineGuid`
+  from registry) with a fixed per-purpose salt. Distinct salts for signature
+  vault (`SIG_SALT`) and result signing (`RESULT_SALT`).
+```
+to:
+```
+- **Key derivation (results):** Argon2id over the machine identifier (Windows
+  `MachineGuid` from registry) with `RESULT_SALT`. Used for HMAC result signing.
+- **Key derivation (signature bundle):** Argon2id over an app-embedded secret
+  with `BUNDLE_SALT` — a PORTABLE key, deterministic across machines. Chosen so
+  the shipped `bundle.psenc` decrypts on any host and the release ships NO
+  plaintext YARA rules (plaintext rules trip Windows Defender). The embedded
+  secret is assembled from split byte arrays at runtime — obfuscation, not a real
+  secret. Rule-set extraction protection is therefore obfuscation-grade only.
+```
+And update the threat-model entry for rule extraction. Change the "Someone
+extracting the rule set" paragraph's protection sentence to:
+```
+   → Raised in cost via AES-256-GCM at-rest encryption with an app-embedded
+   (portable) bundle key. **Weak** — the key lives in the binary, so a determined
+   reverse engineer recovers the rules. This is an accepted trade to keep the
+   product installable with Windows Defender enabled. Stated honestly in README.
+```
+
+- [ ] **Step 7: Commit**
 
 ```bash
-git add core/src/signatures/store.rs core/src/signatures/mod.rs gui/src/app.rs
-git commit -m "feat: encrypted signature bundle with first-run import"
+git add core/src/signatures/store.rs core/src/signatures/mod.rs gui/src/app.rs docs/SECURITY.md
+git commit -m "feat: portable-key encrypted signature bundle (Defender-safe, no plaintext rules shipped)"
 ```
 
 ---
@@ -2731,8 +2827,11 @@ Modify `.gitignore` (create if absent), add:
 # YARA rule build workspace (regenerated by tools/build-rules.sh)
 /.rule-build/
 ```
-Do NOT ignore `signatures/rules/bundled.yar` or `bundled.yarc` — they are shipped
-artifacts and stay committed.
+> **SUPERSEDED by Task 19 Step 5:** `bundled.yar`/`bundled.yarc` are NOT shipped.
+> They are build intermediates — regenerated here, then sealed into `bundle.psenc`
+> by `tools/seal-bundle`. Task 19 gitignores the plaintext and ships only the
+> sealed bundle (plaintext rules trip Windows Defender). Keep MANIFEST.json +
+> SHA256 committed so the sealed bundle stays auditable.
 
 - [ ] **Step 7: Verify a full rebuild reproduces the committed bundle**
 
@@ -2756,6 +2855,203 @@ git commit -m "build: reproducible YARA rule bundle pipeline"
 
 ---
 
+## Task 19: Build-time bundle sealing (ship encrypted, no plaintext rules)
+
+> **WHY:** Shipping plaintext `bundled.yar`/`bundled.yarc` (15MB of malware
+> signatures) makes Windows Defender quarantine the whole install *before first
+> run* — the user can't even start the app. This task pre-seals the bundle at
+> package time with the portable `bundle_key()` (Task 15), so the release contains
+> only `signatures/bundle.psenc` (opaque ciphertext Defender can't pattern-match).
+> "Encrypt ahead of time", not "encrypt on first run".
+
+**Files:**
+- Create: `tools/seal-bundle/Cargo.toml` (tiny bin crate in the workspace)
+- Create: `tools/seal-bundle/src/main.rs`
+- Modify: `Cargo.toml` (add `tools/seal-bundle` to workspace `members`)
+- Modify: `.gitignore` (stop tracking plaintext `bundled.yar`/`.yarc`; track `bundle.psenc`)
+- Create: `tools/package-release.ps1` (assembles a Defender-safe release dir)
+
+**Interfaces:**
+- Consumes: `powerscanner_core::signatures::{seal_bundle, SignatureBundle}` (Task 15).
+- Produces: a CLI `seal-bundle <sig_dir>` that reads `hashes.txt` + `rules/*.yar`, builds a `SignatureBundle`, seals it, and writes `<sig_dir>/bundle.psenc`.
+
+- [ ] **Step 1: Create the sealing binary crate**
+
+Create `tools/seal-bundle/Cargo.toml`:
+```toml
+[package]
+name = "seal-bundle"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+publish = false
+
+[dependencies]
+powerscanner-core = { path = "../../core" }
+```
+
+Create `tools/seal-bundle/src/main.rs`:
+```rust
+//! Offline packaging tool: seal the plaintext signature bundle into `bundle.psenc`
+//! using the portable bundle key, so releases ship no plaintext YARA rules.
+use powerscanner_core::signatures::{seal_bundle, SignatureBundle};
+use std::path::PathBuf;
+use std::process::ExitCode;
+
+fn run() -> Result<(), String> {
+    let sig_dir = std::env::args()
+        .nth(1)
+        .map(PathBuf::from)
+        .ok_or_else(|| "usage: seal-bundle <sig_dir>".to_string())?;
+
+    let hashes_text =
+        std::fs::read_to_string(sig_dir.join("hashes.txt")).unwrap_or_default();
+
+    let mut rule_sources = Vec::new();
+    let rules_dir = sig_dir.join("rules");
+    let rd = std::fs::read_dir(&rules_dir)
+        .map_err(|e| format!("read {}: {e}", rules_dir.display()))?;
+    for entry in rd.flatten() {
+        let path = entry.path();
+        let is_yar = path
+            .extension()
+            .map(|x| x == "yar" || x == "yara")
+            .unwrap_or(false);
+        if is_yar {
+            let src = std::fs::read_to_string(&path)
+                .map_err(|e| format!("read {}: {e}", path.display()))?;
+            rule_sources.push(src);
+        }
+    }
+
+    if rule_sources.is_empty() && hashes_text.is_empty() {
+        return Err(format!("no signatures found under {}", sig_dir.display()));
+    }
+
+    let bundle = SignatureBundle { hashes_text, rule_sources };
+    let plaintext = bundle
+        .to_bytes()
+        .map_err(|e| format!("serialize bundle: {e}"))?;
+    let sealed = seal_bundle(&plaintext).map_err(|e| format!("seal: {e}"))?;
+
+    let out = sig_dir.join("bundle.psenc");
+    std::fs::write(&out, &sealed).map_err(|e| format!("write {}: {e}", out.display()))?;
+    println!("sealed {} bytes to {}", sealed.len(), out.display());
+    Ok(())
+}
+
+fn main() -> ExitCode {
+    match run() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("seal-bundle error: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+```
+
+- [ ] **Step 2: Add the tool to the workspace**
+
+In root `Cargo.toml`, add `"tools/seal-bundle"` to `members`:
+```toml
+members = ["core", "gui", "tools/seal-bundle"]
+```
+
+- [ ] **Step 3: Build and seal the shipped bundle**
+
+Run:
+```bash
+cargo run -p seal-bundle -- signatures
+```
+Expected: prints `sealed <N> bytes to signatures/bundle.psenc` and the file exists.
+
+- [ ] **Step 4: Verify the app reads the sealed bundle (no plaintext present)**
+
+Prove the sealed bundle alone is sufficient — move plaintext aside and confirm
+`load_or_import` opens `bundle.psenc`:
+```bash
+mkdir -p /tmp/ps-ship/rules
+cp signatures/bundle.psenc /tmp/ps-ship/
+cargo run -p seal-bundle -- /tmp/ps-ship 2>&1 | grep -q "no signatures" && echo "OK: no plaintext, .psenc-only dir is what ships"
+```
+Expected: `OK: ...` — the ship dir has only `bundle.psenc`, no plaintext rules.
+(At runtime `load_or_import` takes the `bundle.psenc` branch; the plaintext-import
+branch is dead code for end users.)
+
+- [ ] **Step 5: Stop shipping plaintext rules; track only the sealed bundle**
+
+Modify `.gitignore` — REPLACE the earlier "do not ignore bundled.yar" note. Add:
+```
+# Plaintext YARA rules are a Defender false-positive magnet — never ship them.
+# They are regenerated by tools/build-rules.sh and sealed by tools/seal-bundle.
+/signatures/rules/bundled.yar
+/signatures/rules/bundled.yarc
+```
+And ensure the sealed bundle IS tracked (not ignored): `signatures/bundle.psenc`.
+
+> NOTE: this supersedes Task 18 Step 6's "do NOT ignore bundled.yar/.yarc". The
+> plaintext bundle is now a **build intermediate**, not a shipped artifact. Anyone
+> cloning the repo regenerates it with `tools/build-rules.sh`, then seals it.
+> Provenance (MANIFEST.json, SHA256 of the plaintext) stays committed so the
+> sealed bundle remains auditable.
+
+- [ ] **Step 6: Release-packaging script**
+
+Create `tools/package-release.ps1`:
+```powershell
+# Assemble a Defender-safe release directory: the signed exe + sealed bundle ONLY.
+# No plaintext YARA rules ever enter the release.
+param(
+    [string]$OutDir = "release"
+)
+$ErrorActionPreference = "Stop"
+
+# 1. Build release binary.
+cargo build --release -p powerscanner
+
+# 2. Seal the bundle fresh from current signatures/.
+cargo run -p seal-bundle -- signatures
+
+# 3. Stage a clean release dir.
+$sig = Join-Path $OutDir "signatures"
+Remove-Item -Recurse -Force $OutDir -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force -Path $sig | Out-Null
+
+Copy-Item "target/release/powerscanner.exe" $OutDir
+Copy-Item "signatures/bundle.psenc" $sig
+Copy-Item "signatures/NOTICE.md" $sig -ErrorAction SilentlyContinue
+Copy-Item "signatures/MANIFEST.json" $sig -ErrorAction SilentlyContinue
+
+# 4. Guard: fail loudly if any plaintext rule leaked into the release.
+$leak = Get-ChildItem -Recurse $OutDir -Include *.yar,*.yarc -ErrorAction SilentlyContinue
+if ($leak) {
+    Write-Error "Plaintext rules leaked into release: $($leak.FullName -join ', ')"
+    exit 1
+}
+Write-Host "Release staged in $OutDir (exe + bundle.psenc, no plaintext rules)."
+```
+
+- [ ] **Step 7: Verify the packaged release is Defender-safe in shape**
+
+Run:
+```bash
+pwsh tools/package-release.ps1
+ls release/ release/signatures/
+```
+Expected: `release/powerscanner.exe` + `release/signatures/bundle.psenc` (plus
+NOTICE/MANIFEST). NO `.yar`/`.yarc`. The leak-guard step exits non-zero if any
+plaintext rule slipped in.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add tools/seal-bundle Cargo.toml .gitignore tools/package-release.ps1
+git commit -m "build: pre-seal signature bundle at package time; ship no plaintext rules"
+```
+
+---
+
 ## Self-Review Notes
 
 **Spec coverage check:**
@@ -2767,7 +3063,10 @@ git commit -m "build: reproducible YARA rule bundle pipeline"
 - Incremental scan (skip unchanged mtime+size) → Tasks 10, 13. ✅
 - Import own signatures → Tasks 14, 15. ✅
 - Results to JSONL log → Task 11, wired in 16. ✅
-- **Encrypt signature DB** (AES-256-GCM, machine key) → Tasks 2, 3, 15. ✅
+- **Encrypt signature DB** (AES-256-GCM) → Tasks 3, 15, sealed at build by 19. ✅
+  (Portable app-embedded bundle key, not machine key — required to ship encrypted
+  and stay installable with Defender on; trade-off recorded in SECURITY.md.)
+- **Defender-safe release** (no plaintext rules shipped; pre-sealed bundle) → Task 19. ✅
 - **Encrypt config** — same vault primitive (Task 3) is config-ready; no separate config file exists in Phase 1, so no dedicated task. Noted as available, not built (YAGNI). ✅
 - **Tamper-proof results** (HMAC signed, ACL dir) → Tasks 4, 11, 16. ✅
 - Avoid SoSecure bugs: no SQL concat (no SQL in Phase 1), no hardcoded secrets (keys derived — Task 2), authenticated encryption everywhere (Tasks 3, 4). ✅

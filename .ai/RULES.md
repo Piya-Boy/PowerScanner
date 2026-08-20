@@ -49,7 +49,7 @@ major scope change · security exception · anything hard to reverse.
 
 ## Project-specific hard constraints (from the plan)
 
-- Rust edition 2021, MSRV 1.74+, Windows x64 target.
+- Rust edition 2021, MSRV 1.88+, Windows x64 target.
 - `core/` crate must not depend on any GUI crate.
 - Authenticated encryption or signatures on all persisted files; no plaintext
   secrets; no hardcoded keys (machine-derived at runtime).

@@ -25,7 +25,7 @@ Use the code from Task 1 Steps 1–4 verbatim.
 - [ ] `cargo build` clean
 - [ ] `PsError` is a `thiserror` enum with variants Io(`#[from]`), Crypto,
       Signature, Yara, Config, Tamper; plus `pub type PsResult<T>`
-- [ ] edition 2021, MSRV 1.74, deps pinned per Global Constraints
+- [ ] edition 2021, MSRV 1.88, deps pinned per Global Constraints
 - [ ] no `unwrap`/`expect` outside tests
 
 ## Constraints

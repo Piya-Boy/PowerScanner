@@ -1,0 +1,5 @@
+# dir-name<TAB>git-url<TAB>ref<TAB>license
+# anyrun/YARA is intentionally excluded: its repository ships no LICENSE file.
+reversinglabs	https://github.com/reversinglabs/reversinglabs-yara-rules.git	e0a0be54aa1e11ccfd6854e4f19e9476f328fd84	MIT
+yara-rules	https://github.com/Yara-Rules/rules.git	0f93570194a80d2f2032869055808b0ddcdfb360	GPL-2.0
+bartblaze	https://github.com/bartblaze/Yara-rules.git	5cc871d82361de8a80d387ec8bbd01fe4258b4a9	MIT

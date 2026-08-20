@@ -1,0 +1,439 @@
+{
+  "_comment": "Task metadata for tools/engineering_loop.py. Deps + impl_model mirror tasks/TODO.md and .ai/MODEL_ROUTER.md. Each task's full code/tests live in the canonical plan (docs/superpowers/plans/2026-08-17-powerscanner-phase1.md); the loop points Codex there rather than duplicating code. verify = the command the loop runs after Codex to confirm the task is green.",
+  "plan": "docs/superpowers/plans/2026-08-17-powerscanner-phase1.md",
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "Workspace scaffold + PsError",
+      "objective": "Create the cargo workspace (root + core crate) and the shared PsError type.",
+      "depends_on": [],
+      "impl_model": "5.6 Terra",
+      "branch": "feature/core-scaffold",
+      "files": [
+        "Cargo.toml",
+        "core/Cargo.toml",
+        "core/src/lib.rs",
+        "core/src/error.rs"
+      ],
+      "verify": "cargo test -p powerscanner-core error::",
+      "commit": "feat: workspace scaffold and PsError type",
+      "notes": "The plan's root Cargo.toml shows `members = [\"core\", \"gui\"]`, but the `gui/` crate does NOT exist yet (it is TASK-014). Listing a missing member makes `cargo test -p powerscanner-core` fail. RESOLUTION: in the root Cargo.toml list ONLY `members = [\"core\"]` for now, and add a comment `# gui re-added in TASK-014`. Do NOT create a gui/ crate — that is out of scope. Keep the full `[workspace.dependencies]` block from the plan verbatim. TASK-014 re-adds gui to members.",
+      "acceptance": [
+        "cargo test -p powerscanner-core error:: -> tests pass",
+        "PsError is a thiserror enum: Io(#[from]), Crypto, Signature, Yara, Config, Tamper; plus PsResult<T>",
+        "edition 2021, MSRV 1.88, deps pinned per Global Constraints",
+        "core does not depend on any GUI crate; no unwrap/expect outside tests"
+      ],
+      "min_tests": 2
+    },
+    {
+      "id": "TASK-002",
+      "title": "Machine-derived key (Argon2id)",
+      "objective": "Derive a machine-bound key via Argon2id over MachineGuid + volume serial with a per-purpose salt.",
+      "depends_on": [
+        "TASK-001"
+      ],
+      "impl_model": "5.6 Sol",
+      "branch": "feature/machine-key",
+      "files": [
+        "core/src/crypto/mod.rs",
+        "core/src/crypto/machine_key.rs"
+      ],
+      "verify": "cargo test -p powerscanner-core crypto::machine_key",
+      "commit": "feat(crypto): machine-derived key via Argon2id",
+      "acceptance": [
+        "Argon2id KDF over MachineGuid + volume serial + per-purpose salt (SIG_SALT / RESULT_SALT)",
+        "no hardcoded key material anywhere",
+        "distinct salts yield independent keys; deterministic on the same machine",
+        "tests pass"
+      ],
+      "min_tests": 3
+    },
+    {
+      "id": "TASK-003",
+      "title": "AES-256-GCM vault",
+      "objective": "Authenticated at-rest encrypt/decrypt of file blobs.",
+      "depends_on": [
+        "TASK-002"
+      ],
+      "impl_model": "5.6 Sol",
+      "branch": "feature/vault",
+      "files": [
+        "core/src/crypto/vault.rs"
+      ],
+      "verify": "cargo test -p powerscanner-core crypto::vault",
+      "commit": "feat(crypto): AES-256-GCM vault",
+      "acceptance": [
+        "blob layout [12-byte random nonce][ciphertext+tag]; fresh nonce per encryption",
+        "GCM tag failure -> PsError::Crypto, never plaintext fallback",
+        "roundtrip + tamper-detection tests pass"
+      ],
+      "min_tests": 3
+    },
+    {
+      "id": "TASK-004",
+      "title": "HMAC result signer",
+      "objective": "HMAC-SHA256 sign/verify with constant-time compare for result lines.",
+      "depends_on": [
+        "TASK-002"
+      ],
+      "impl_model": "5.6 Sol",
+      "branch": "feature/signer",
+      "files": [
+        "core/src/crypto/signer.rs"
+      ],
+      "verify": "cargo test -p powerscanner-core crypto::signer",
+      "commit": "feat(crypto): HMAC-SHA256 result signer",
+      "acceptance": [
+        "HMAC-SHA256 sign + constant-time verify",
+        "mismatch -> PsError::Tamper",
+        "tests pass"
+      ],
+      "min_tests": 2
+    },
+    {
+      "id": "TASK-005",
+      "title": "Result types",
+      "objective": "ScanResult, Verdict, Finding, DetectionKind (Phase 2 seam).",
+      "depends_on": [
+        "TASK-001"
+      ],
+      "impl_model": "5.6 Terra",
+      "branch": "feature/result-types",
+      "files": [
+        "core/src/scan/result.rs",
+        "core/src/scan/mod.rs"
+      ],
+      "verify": "cargo test -p powerscanner-core scan::result",
+      "commit": "feat(scan): result types and DetectionKind seam",
+      "acceptance": [
+        "ScanResult/Verdict/Finding serde-serializable",
+        "DetectionKind enum present as the fuzzy-hash seam",
+        "tests pass"
+      ],
+      "min_tests": 1
+    },
+    {
+      "id": "TASK-006",
+      "title": "Streaming SHA-256 hasher",
+      "objective": "Streaming SHA-256 of a file with a bounded buffer.",
+      "depends_on": [
+        "TASK-001"
+      ],
+      "impl_model": "5.6 Terra",
+      "branch": "feature/hasher",
+      "files": [
+        "core/src/scan/hasher.rs"
+      ],
+      "verify": "cargo test -p powerscanner-core scan::hasher",
+      "commit": "feat(scan): streaming SHA-256 hasher",
+      "acceptance": [
+        "streams in bounded chunks, never loads whole file",
+        "known-vector test passes"
+      ],
+      "min_tests": 1
+    },
+    {
+      "id": "TASK-007",
+      "title": "Hash blacklist DB",
+      "objective": "Load SHA-256 blacklist into a set for O(1) lookup.",
+      "depends_on": [
+        "TASK-001"
+      ],
+      "impl_model": "5.6 Terra",
+      "branch": "feature/hashdb",
+      "files": [
+        "core/src/signatures/hashdb.rs",
+        "core/src/signatures/mod.rs"
+      ],
+      "verify": "cargo test -p powerscanner-core signatures::hashdb",
+      "commit": "feat(signatures): SHA-256 hash blacklist",
+      "acceptance": [
+        "parses hashes.txt; O(1) lookup; tests pass"
+      ],
+      "min_tests": 1
+    },
+    {
+      "id": "TASK-008",
+      "title": "yara-x rules compiler",
+      "objective": "Compile and hold yara-x rules; scan bytes.",
+      "depends_on": [
+        "TASK-001"
+      ],
+      "impl_model": "5.6 Terra",
+      "branch": "feature/yara-rules",
+      "files": [
+        "core/src/signatures/rules.rs"
+      ],
+      "verify": "cargo test -p powerscanner-core signatures::rules",
+      "commit": "feat(signatures): yara-x rules compile and scan",
+      "acceptance": [
+        "compiles rules via yara-x; matches EICAR-like sample; tests pass"
+      ],
+      "min_tests": 1
+    },
+    {
+      "id": "TASK-009",
+      "title": "Scan presets (targets)",
+      "objective": "Resolve Quick/Full/Risky presets to concrete roots.",
+      "depends_on": [
+        "TASK-001"
+      ],
+      "impl_model": "5.6 Terra",
+      "branch": "feature/targets",
+      "files": [
+        "core/src/scan/targets.rs"
+      ],
+      "verify": "cargo test -p powerscanner-core scan::targets",
+      "commit": "feat(scan): Quick/Full/Risky presets",
+      "acceptance": [
+        "three presets resolve to concrete roots; tests pass"
+      ],
+      "min_tests": 1
+    },
+    {
+      "id": "TASK-010",
+      "title": "Incremental scan cache",
+      "objective": "Skip files whose size+mtime are unchanged since last scan.",
+      "depends_on": [
+        "TASK-001"
+      ],
+      "impl_model": "5.6 Terra",
+      "branch": "feature/incremental",
+      "files": [
+        "core/src/scan/incremental.rs"
+      ],
+      "verify": "cargo test -p powerscanner-core scan::incremental",
+      "commit": "feat(scan): incremental skip-cache",
+      "acceptance": [
+        "unchanged (size,mtime) skipped; changed rescanned; tests pass"
+      ],
+      "min_tests": 1
+    },
+    {
+      "id": "TASK-011",
+      "title": "ResultSink + JSONL sink",
+      "objective": "ResultSink trait + HMAC-signed append-only JSONL sink.",
+      "depends_on": [
+        "TASK-004",
+        "TASK-005"
+      ],
+      "impl_model": "5.6 Terra",
+      "branch": "feature/sink-jsonl",
+      "files": [
+        "core/src/sink/mod.rs",
+        "core/src/sink/jsonl.rs"
+      ],
+      "verify": "cargo test -p powerscanner-core sink::",
+      "commit": "feat(sink): ResultSink trait and signed JSONL sink",
+      "acceptance": [
+        "append-only; each line HMAC-signed and verifiable; tamper detectable; tests pass"
+      ],
+      "min_tests": 1
+    },
+    {
+      "id": "TASK-012",
+      "title": "Directory walker",
+      "objective": "Enumerate files for a target set, skipping symlinks/reparse points.",
+      "depends_on": [
+        "TASK-001"
+      ],
+      "impl_model": "5.6 Terra",
+      "branch": "feature/walker",
+      "files": [
+        "core/src/scan/walk.rs"
+      ],
+      "verify": "cargo test -p powerscanner-core scan::walk",
+      "commit": "feat(scan): directory walker with symlink guard",
+      "acceptance": [
+        "enumerates files; skips symlinks/reparse points; tests pass"
+      ],
+      "min_tests": 1
+    },
+    {
+      "id": "TASK-013",
+      "title": "Parallel scan engine",
+      "objective": "Rayon fan-out: per file hash -> hashdb -> YARA -> ScanResult.",
+      "depends_on": [
+        "TASK-005",
+        "TASK-006",
+        "TASK-007",
+        "TASK-008",
+        "TASK-010",
+        "TASK-012"
+      ],
+      "impl_model": "5.6 Terra",
+      "branch": "feature/engine",
+      "files": [
+        "core/src/scan/engine.rs"
+      ],
+      "verify": "cargo test -p powerscanner-core scan::engine",
+      "commit": "feat(scan): parallel scan engine",
+      "acceptance": [
+        "rayon parallel; 16 MiB YARA read cap; unreadable file -> error finding not clean; tests pass"
+      ],
+      "min_tests": 1
+    },
+    {
+      "id": "TASK-014",
+      "title": "egui dashboard",
+      "objective": "eframe/egui dashboard: presets, progress ring, live stream, result table.",
+      "depends_on": [
+        "TASK-005",
+        "TASK-009",
+        "TASK-013"
+      ],
+      "impl_model": "5.6 Terra",
+      "branch": "feature/gui-dashboard",
+      "files": [
+        "gui/Cargo.toml",
+        "gui/src/main.rs",
+        "gui/src/app.rs",
+        "gui/src/ring.rs"
+      ],
+      "verify": "cargo build -p powerscanner",
+      "commit": "feat(gui): egui dashboard",
+      "notes": "TASK-001 left `members = [\"core\"]` only. This task creates the gui/ crate AND re-adds \"gui\" to the root Cargo.toml members list. The gui binary package is named `powerscanner` (bin), crate powerscanner-gui.",
+      "acceptance": [
+        "re-adds gui to workspace members",
+        "scan runs on a background thread via mpsc; frame loop never blocks",
+        "live stream while scanning -> filterable table when done; builds clean"
+      ],
+      "min_tests": 0
+    },
+    {
+      "id": "TASK-015",
+      "title": "Encrypted signature loading (portable key)",
+      "objective": "Load the sealed encrypted bundle; first-run import; C4 read-to-memory.",
+      "depends_on": [
+        "TASK-003",
+        "TASK-007",
+        "TASK-014"
+      ],
+      "impl_model": "5.6 Sol",
+      "branch": "feature/sig-load",
+      "files": [
+        "core/src/signatures/store.rs"
+      ],
+      "verify": "cargo test -p powerscanner-core signatures::store",
+      "commit": "feat(signatures): encrypted bundle load with portable key",
+      "acceptance": [
+        "first run imports hashes.txt + rules, seals to bundle.psenc",
+        "C4: reads sealed bundle fully to memory and drops the handle immediately",
+        "GCM auth failure -> hard error; tests pass"
+      ],
+      "min_tests": 1
+    },
+    {
+      "id": "TASK-016",
+      "title": "Signed results wired end-to-end",
+      "objective": "Wire the signed JSONL sink through the engine + GUI.",
+      "depends_on": [
+        "TASK-004",
+        "TASK-011",
+        "TASK-014"
+      ],
+      "impl_model": "5.6 Terra",
+      "branch": "feature/wire-results",
+      "files": [
+        "core/src/scan/engine.rs",
+        "gui/src/app.rs"
+      ],
+      "verify": "cargo test -p powerscanner-core",
+      "commit": "feat: wire signed results end-to-end",
+      "acceptance": [
+        "engine emits through ResultSink; results written to ACL dir; HMAC-verifiable; tests pass"
+      ],
+      "min_tests": 2
+    },
+    {
+      "id": "TASK-017",
+      "title": "README + signature docs",
+      "objective": "User-facing README + signature/security documentation.",
+      "depends_on": [
+        "TASK-016"
+      ],
+      "impl_model": "5.6 Luna",
+      "branch": "docs/readme-signatures",
+      "files": [
+        "README.md",
+        "docs/SECURITY.md"
+      ],
+      "verify": "",
+      "commit": "docs: README and signature/security docs",
+      "acceptance": [
+        "documents build/run, presets, signature layout, result signing",
+        "states honest limitations (T1 detectable-not-preventable, T2 cost-raising)"
+      ],
+      "min_tests": 0
+    },
+    {
+      "id": "TASK-018",
+      "title": "Reproducible rule bundle pipeline",
+      "objective": "Deterministic multi-source rule bundle build pipeline.",
+      "depends_on": [
+        "TASK-001"
+      ],
+      "impl_model": "5.6 Terra",
+      "branch": "feature/rule-pipeline",
+      "files": [
+        "tools/build-rules.sh",
+        "signatures/MANIFEST.json"
+      ],
+      "verify": "",
+      "commit": "feat(tooling): reproducible rule bundle pipeline",
+      "acceptance": [
+        "reproducible bundle build; MANIFEST records sources/licenses/versions"
+      ],
+      "min_tests": 0
+    },
+    {
+      "id": "TASK-019",
+      "title": "Build-time bundle sealing (Defender-safe ship)",
+      "objective": "Seal the bundle at build time; ship pre-sealed .psenc, no plaintext rules.",
+      "depends_on": [
+        "TASK-015",
+        "TASK-018"
+      ],
+      "impl_model": "5.6 Sol",
+      "branch": "feature/seal-bundle",
+      "files": [
+        "tools/seal-bundle/Cargo.toml",
+        "tools/seal-bundle/src/main.rs"
+      ],
+      "verify": "cargo build -p seal-bundle",
+      "commit": "feat(tooling): build-time bundle sealing",
+      "acceptance": [
+        "ships pre-sealed bundle.psenc using the app-embedded portable key",
+        "no plaintext rules shipped; Defender-safe"
+      ],
+      "min_tests": 0
+    },
+    {
+      "id": "FIX-001",
+      "title": "Scan error must not read as Clean",
+      "objective": "A per-file scan failure (unreadable/locked file, hash error) must surface as an explicit error verdict, never a silent Verdict::Clean. Fixes PM review finding F1.",
+      "depends_on": [
+        "TASK-016"
+      ],
+      "impl_model": "5.6 Sol",
+      "files": [
+        "core/src/scan/result.rs",
+        "core/src/scan/engine.rs",
+        "core/src/scan/mod.rs",
+        "gui/src/app.rs"
+      ],
+      "verify": "cargo test --workspace",
+      "commit": "fix(scan): surface per-file scan errors instead of false Clean",
+      "min_tests": 58,
+      "notes": "PM review F1: in core/src/scan/engine.rs, scan_all_with_progress currently does `scan_entry(cfg, entry).unwrap_or_else(|_| ScanResult{ ... verdict: Verdict::Clean ... })` — a file that fails to hash/read is silently reported CLEAN. This contradicts docs/ARCHITECTURE.md ('absence of detection is never reported as clean') and lets malware that locks its own file evade detection.\n\nREQUIRED CHANGES:\n1. In core/src/scan/result.rs add a third Verdict variant `Error` (serde rename 'error'). Add an OPTIONAL `error: Option<String>` field to ScanResult (serde default, skip_serializing_if None) OR carry the message via a Finding — pick the smaller change but the error MUST be represented, not dropped.\n2. In engine.rs, on scan_entry Err, produce a ScanResult with `verdict: Verdict::Error` and the error text — do NOT map to Clean. Keep sha256 empty for the error case.\n3. Update gui/src/app.rs: the malicious metric must NOT count Error results as clean; show Error rows distinctly (e.g. count/label). Do not let an Error verdict be filtered away as if clean.\n4. ADD TESTS: (a) a file that cannot be read yields Verdict::Error (simulate via a path that does not exist or a directory), (b) an Error result is not counted as Malicious NOR silently dropped. Keep ALL existing tests green.\n\nDo NOT weaken any existing detection. Whole-workspace `cargo test` must stay green (currently 57 passing; this task adds at least one more, so min is 58).",
+      "acceptance": [
+        "Verdict has an Error variant; a scan_entry failure yields Verdict::Error, never Clean",
+        "the error message is preserved on the ScanResult (not dropped)",
+        "GUI does not count/treat Error results as clean; they are visible",
+        "new test proves unreadable file -> Verdict::Error; all prior tests still pass",
+        "cargo clippy --workspace clean; no unwrap/expect added to library paths"
+      ]
+    }
+  ]
+}
